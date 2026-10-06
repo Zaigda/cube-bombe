@@ -1,27 +1,36 @@
 #include <Arduino.h>
-#include "Hal/SerialScreen.h"
+#include "Config.h"
+#include "Core/Countdown.h"
 
-static SerialScreen screen;
+Countdown countdown;
 
 void setup() {
     Serial.begin(115200);
+    delay(2000);   // time to open the serial monitor
+    Serial.println("Bomb cube - step 1: countdown");
 
-    const uint32_t start = millis();
-    while (!Serial && millis() - start < 2000UL) {
-        delay(10);
-    }
-
-    Serial.println("Hello, I am the bomb!");
+    countdown.Start(Timing::GAME_DURATION_MS, millis());
 }
 
 void loop() {
     const uint32_t now = millis();
 
-    // Step 2 demo: a dot crossing the screen, one cell every 300 ms.
-    // The whole frame is redrawn on every pass; Show() only prints when it changed.
-    const uint8_t x = static_cast<uint8_t>((now / 300UL) % screen.Width());
+    // Temporary test: typing 'p' in the monitor costs a penalty.
+    if (Serial.available() > 0 && Serial.read() == 'p') {
+        countdown.AddPenalty(Timing::MISTAKE_PENALTY_MS);
+        Serial.println("Penalty!");
+    }
 
-    screen.Clear();
-    screen.SetCell(x, screen.Height() / 2, Color::Green);
-    screen.Show();
+    // Print the remaining time once per second, not on every loop.
+    static uint32_t lastPrintMs = 0;
+    if (now - lastPrintMs >= 1000) {
+        lastPrintMs = now;
+        const unsigned int remainingS = countdown.GetRemainingMs(now) / 1000;
+        Serial.printf("%u:%02u\n", remainingS / 60, remainingS % 60);
+    }
+
+    if (countdown.IsExpired(now)) {
+        Serial.println("BOOM");
+        countdown.Stop(now);   // stops the timer, so BOOM prints only once
+    }
 }
