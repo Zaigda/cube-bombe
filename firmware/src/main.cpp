@@ -1,44 +1,27 @@
 #include <Arduino.h>
+#include "Hal/SerialScreen.h"
 
-constexpr uint8_t PIN_LED = 48;
+static SerialScreen screen;
 
 void setup() {
     Serial.begin(115200);
-    while (!Serial) {
+
+    const uint32_t start = millis();
+    while (!Serial && millis() - start < 2000UL) {
         delay(10);
     }
+
     Serial.println("Hello, I am the bomb!");
 }
 
-void setColor(uint8_t r, uint8_t g, uint8_t b) {
-    neopixelWrite(PIN_LED, r, g, b);
-}
-
-void turnOff() {
-    setColor(0, 0, 0);
-}
-
-// Blinks the LED `count` times, then leaves it off.
-void blink(int count, uint8_t r, uint8_t g, uint8_t b, int offDelay = 150) {
-    for (int i = 0; i < count; i++) {
-        setColor(r, g, b);
-        delay(offDelay);
-        turnOff();
-        delay(offDelay);
-    }
-}
-
 void loop() {
-    Serial.println("All good");
-    setColor(0, 30, 0);     // green
-    delay(3000);
+    const uint32_t now = millis();
 
-    Serial.println("Warning...");
-    setColor(30, 10, 0);    // orange = lots of red + a little green
-    delay(2000);
+    // Step 2 demo: a dot crossing the screen, one cell every 300 ms.
+    // The whole frame is redrawn on every pass; Show() only prints when it changed.
+    const uint8_t x = static_cast<uint8_t>((now / 300UL) % screen.Width());
 
-    Serial.println("BOOM");
-    blink(5, 30, 0, 0);     // red, fast
-
-    delay(1000);            // off (blink() leaves the LED off)
+    screen.Clear();
+    screen.SetCell(x, screen.Height() / 2, Color::Green);
+    screen.Show();
 }
