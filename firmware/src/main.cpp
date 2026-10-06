@@ -1,13 +1,20 @@
 #include <Arduino.h>
 #include "Config.h"
 #include "Core/Countdown.h"
+#include "Core/Palette.h"
+#include "Outputs/Screen.h"
 
 Countdown countdown;
+Screen testScreen(64, 64, 0);   // temporary: step 2a test
 
 void setup() {
     Serial.begin(115200);
     delay(2000);   // time to open the serial monitor
     Serial.println("Bomb cube - step 1: countdown");
+
+    Serial.println(testScreen.HasPixels() ? "Screen OK" : "Screen: not enough memory!");
+    testScreen.fillRect(10, 10, 4, 4, Palette::RED);
+    Serial.printf("Pixel (11, 11) = %04X, red = %04X\n", testScreen.getPixel(11, 11), Palette::RED);
 
     countdown.Start(Timing::GAME_DURATION_MS, millis());
 }
