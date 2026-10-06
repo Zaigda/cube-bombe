@@ -1,0 +1,16 @@
+#pragma once
+#include "Sensor.h"
+
+class InputManager {
+public:
+    void Add(Sensor &sensor);
+
+    void Begin();
+
+    void Update(uint32_t now);
+
+private:
+    static constexpr uint8_t MAX_SENSORS = 12;
+    Sensor *sensors[MAX_SENSORS] = {};
+    uint8_t sensorCount = 0;
+};
