@@ -3,18 +3,28 @@
 #include "Core/Countdown.h"
 #include "Core/Palette.h"
 #include "Outputs/Screen.h"
+#include "Outputs/SerialOutput.h"
 
 Countdown countdown;
-Screen testScreen(64, 64, 0);   // temporary: step 2a test
+Screen testScreen(64, 64, 0);
+SerialOutput output;
 
 void setup() {
     Serial.begin(115200);
-    delay(2000);   // time to open the serial monitor
-    Serial.println("Bomb cube - step 1: countdown");
+    delay(2000);
+    Serial.println("Bomb cube - step 2b: serial output");
 
-    Serial.println(testScreen.HasPixels() ? "Screen OK" : "Screen: not enough memory!");
+    output.AddScreen(testScreen);
+    if (!output.Begin()) {
+        Serial.println("Output failed to start");
+    }
+
+
     testScreen.fillRect(10, 10, 4, 4, Palette::RED);
-    Serial.printf("Pixel (11, 11) = %04X, red = %04X\n", testScreen.getPixel(11, 11), Palette::RED);
+    testScreen.drawLine(0, 63, 63, 30, Palette::GREEN);
+    testScreen.setTextSize(2);
+    testScreen.setCursor(20, 40);
+    testScreen.print("HI");
 
     countdown.Start(Timing::GAME_DURATION_MS, millis());
 }
@@ -22,13 +32,11 @@ void setup() {
 void loop() {
     const uint32_t now = millis();
 
-    // Temporary test: typing 'p' in the monitor costs a penalty.
     if (Serial.available() > 0 && Serial.read() == 'p') {
         countdown.AddPenalty(Timing::MISTAKE_PENALTY_MS);
         Serial.println("Penalty!");
     }
 
-    // Print the remaining time once per second, not on every loop.
     static uint32_t lastPrintMs = 0;
     if (now - lastPrintMs >= 1000) {
         lastPrintMs = now;
@@ -38,6 +46,8 @@ void loop() {
 
     if (countdown.IsExpired(now)) {
         Serial.println("BOOM");
-        countdown.Stop(now);   // stops the timer, so BOOM prints only once
+        countdown.Stop(now);
     }
+
+    output.Show();
 }
