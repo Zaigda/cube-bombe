@@ -1,0 +1,54 @@
+﻿#pragma once
+#include "Enigma.h"
+#include "Core/BombCode.h"
+#include "Inputs/Button.h"
+#include "Outputs/Screen.h"
+
+enum class Direction : uint8_t { Up, Down, Left, Right };
+
+struct Cell {
+    int x;
+    int y;
+};
+
+class SnakeEnigma : public Enigma {
+public:
+    SnakeEnigma(const Button &leftButton, const Button &rightButton, Screen &snakeScreen, const BombCode &bombCode);
+
+    void Start(uint32_t now) override;
+
+    EnigmaEvent Update(uint32_t now) override;
+
+    void Draw(uint32_t now) override;
+
+private:
+    void ReadTurns();
+
+    Cell NextHead() const;
+
+    bool IsOutside(Cell cell) const;
+
+    bool IsOnSnake(Cell cell, int cellsToCheck) const;
+
+    void Move(Cell newHead);
+
+    void PlaceApple();
+
+    static constexpr int MAX_LENGTH = 64;
+
+    const Button &turnLeftButton;
+    const Button &turnRightButton;
+    Screen &screen;
+    const BombCode &code;
+
+    int columns = 0;
+    int rows = 0;
+    Cell body[MAX_LENGTH] = {};
+    int length = 0;
+    int targetLength = 0;
+    Direction direction = Direction::Right;
+    Direction nextDirection = Direction::Right;
+    uint32_t lastStepMs = 0;
+    Cell apple = {0, 0};
+    int applesEaten = 0;
+};

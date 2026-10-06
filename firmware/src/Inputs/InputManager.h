@@ -10,7 +10,7 @@ public:
     void Update(uint32_t now);
 
 private:
-    static constexpr uint8_t MAX_SENSORS = 12;
+    static constexpr uint8_t MAX_SENSORS = 16;
     Sensor *sensors[MAX_SENSORS] = {};
     uint8_t sensorCount = 0;
 };

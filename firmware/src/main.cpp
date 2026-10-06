@@ -1,58 +1,97 @@
 #include <Arduino.h>
 #include "Config.h"
-#include "Core/Countdown.h"
+#include "Core/BombCode.h"
+#include "Core/Diagnostics.h"
 #include "Core/Palette.h"
+#include "Enigma/Enigma.h"
+#include "Enigma/SnakeEnigma.h"
+#include "Inputs/InputManager.h"
+#include "Inputs/KeyButton.h"
+#include "Inputs/SerialKeys.h"
 #include "Outputs/Screen.h"
 #include "Outputs/SerialOutput.h"
 
-constexpr int16_t CELL_SIZE = 4;     // one game cell = 4x4 pixels
-constexpr int16_t SQUARE_ROW = 10;   // the row of cells the square moves along
-constexpr uint32_t STEP_MS = 200;    // the square moves one cell every 200 ms
+SerialKeys keys;
+KeyButton leftButton(keys, 'q');
+KeyButton rightButton(keys, 'd');
+InputManager inputs;
 
-Countdown countdown;
-Screen testScreen(64, 64, 0);   // temporary: step 2 test
+Screen snakeScreen(64, 64, 0);
 SerialOutput output;
 
-int16_t squareColumn = 0;   // position of the square, in cells
-uint32_t lastStepMs = 0;
+BombCode code;
+SnakeEnigma snake(leftButton, rightButton, snakeScreen, code);
+
+Diagnostics diagnostics;
+
+static void PrintMemoryMap() {
+    const int localNumber = 42;
+
+    Serial.println("--- Where things live in memory ---");
+    Diagnostics::PrintMemory("snake (global)", &snake, sizeof(snake));
+    Diagnostics::PrintMemory("snakeScreen (global)", &snakeScreen, sizeof(snakeScreen));
+    Diagnostics::PrintMemory("snakeScreen pixels", snakeScreen.getBuffer(), 64 * 64 * 2);
+    Diagnostics::PrintMemory("code (global)", &code, sizeof(code));
+    Diagnostics::PrintMemory("localNumber (local)", &localNumber, sizeof(localNumber));
+    Diagnostics::PrintMemory("\"text\" (literal)", "text", 5);
+    Diagnostics::PrintFreeMemory();
+
+    Serial.println("Press a key to start (or wait 20 s)");
+    const uint32_t waitStartMs = millis();
+    while (Serial.available() == 0 && millis() - waitStartMs < 20000) {
+        delay(10);
+    }
+    while (Serial.available() > 0) {
+        Serial.read();
+    }
+}
 
 void setup() {
     Serial.begin(115200);
     delay(2000);
-    Serial.println("Bomb cube - step 2c: moving square");
 
-    output.AddScreen(testScreen);
+    output.AddScreen(snakeScreen);
     if (!output.Begin()) {
-        Serial.println("Output failed to start");
+        Serial.println("Output failed to start: stopped");
+        while (true) {
+            delay(1000);
+        }
+    }
+    Serial.println("Bomb cube - step 4: snake");
+
+    inputs.Add(keys);
+    inputs.Add(leftButton);
+    inputs.Add(rightButton);
+    inputs.Begin();
+
+    if (Debug::DIAGNOSTICS) {
+        PrintMemoryMap();
     }
 
-    countdown.Start(Timing::GAME_DURATION_MS, millis());
+    code.Shuffle();
+    snake.Start(millis());
 }
 
 void loop() {
+    diagnostics.BeginLoop();
     const uint32_t now = millis();
 
-    // Temporary test: typing 'p' in the monitor costs a penalty.
-    if (Serial.available() > 0 && Serial.read() == 'p') {
-        countdown.AddPenalty(Timing::MISTAKE_PENALTY_MS);
+    inputs.Update(now);
+
+    const EnigmaEvent event = snake.Update(now);
+    if (event == EnigmaEvent::Mistake) {
+        Serial.println("Mistake!");
+    } else if (event == EnigmaEvent::Solved) {
+        Serial.println("Solved! New code, new game.");
+        code.Shuffle();
+        snake.Start(now);
     }
 
-    // 1. Logic: one cell to the right every STEP_MS, back to the left after the edge.
-    if (now - lastStepMs >= STEP_MS) {
-        lastStepMs = now;
-        const int16_t columns = testScreen.width() / CELL_SIZE;
-        squareColumn = (squareColumn + 1) % columns;
-    }
-
-    // 2. Drawing: start from a black image and redraw everything.
-    testScreen.fillScreen(Palette::BLACK);
-    testScreen.fillRect(squareColumn * CELL_SIZE, SQUARE_ROW * CELL_SIZE, CELL_SIZE, CELL_SIZE, Palette::RED);
-
-    const unsigned int remainingS = countdown.GetRemainingMs(now) / 1000;
-    testScreen.setTextSize(2);
-    testScreen.setCursor(8, 4);
-    testScreen.printf("%u:%02u", remainingS / 60, remainingS % 60);
-
-    // 3. Display: only prints when the image changed.
+    snakeScreen.fillScreen(Palette::BLACK);
+    snake.Draw(now);
     output.Show();
+
+    if (Debug::DIAGNOSTICS) {
+        diagnostics.EndLoop(now);
+    }
 }

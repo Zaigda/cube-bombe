@@ -2,6 +2,9 @@
 #include <Arduino.h>
 #include "Core/Palette.h"
 
+static const char *CLEAR_TERMINAL = "\033[2J";
+static const char *CURSOR_HOME = "\033[H";
+
 static uint32_t Fingerprint(const Screen &screen) {
     const uint16_t *pixels = screen.getBuffer();
     const uint32_t pixelCount = screen.width() * screen.height();
@@ -41,16 +44,26 @@ bool SerialOutput::Begin() {
             return false;
         }
     }
+    Serial.print(CLEAR_TERMINAL);
     return true;
 }
 
 void SerialOutput::Show() {
+    bool changed = false;
     for (uint8_t i = 0; i < screenCount; i++) {
         const uint32_t fingerprint = Fingerprint(*screens[i]);
         if (fingerprint != lastFingerprints[i]) {
             lastFingerprints[i] = fingerprint;
-            Print(*screens[i], i);
+            changed = true;
         }
+    }
+    if (!changed) {
+        return;
+    }
+
+    Serial.print(CURSOR_HOME);
+    for (uint8_t i = 0; i < screenCount; i++) {
+        Print(*screens[i], i);
     }
 }
 
