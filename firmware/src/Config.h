@@ -50,7 +50,7 @@ namespace Pins {
         46, 10, 9       // LAT OE CLK
     };
 
-    constexpr uint8_t SNAKE_LEFT_BUTTON = 4;
-    constexpr uint8_t SNAKE_RIGHT_BUTTON = 5;
-    constexpr uint8_t START_BUTTON = 6;
+    constexpr uint8_t SNAKE_LEFT_BUTTON = 41;
+    constexpr uint8_t SNAKE_RIGHT_BUTTON = 42;
+    constexpr uint8_t START_BUTTON = 13;
 }

@@ -4,19 +4,25 @@
 #include "Core/Palette.h"
 #include "Enigma/Enigma.h"
 #include "Enigma/SnakeEnigma.h"
+#include "Inputs/EitherButton.h"
 #include "Inputs/InputManager.h"
+#include "Inputs/PinButton.h"
 #include "Inputs/SerialKeyboard.h"
 #include "Outputs/PanelOutput.h"
 #include "Outputs/Screen.h"
 
 SerialKeyboard keyboard(Serial);
+PinButton leftPin(Pins::SNAKE_LEFT_BUTTON);
+PinButton rightPin(Pins::SNAKE_RIGHT_BUTTON);
+EitherButton leftButton(leftPin, keyboard.Left());
+EitherButton rightButton(rightPin, keyboard.Right());
 InputManager inputs;
 
 Screen snakeScreen(64, 64, 0);
 PanelOutput output(Pins::HUB75, 2);
 
 BombCode code;
-SnakeEnigma snake(keyboard.Left(), keyboard.Right(), snakeScreen, code);
+SnakeEnigma snake(leftButton, rightButton, snakeScreen, code);
 
 namespace {
     constexpr uint32_t TEST_STEP_MS = 1000;
@@ -62,6 +68,8 @@ void setup() {
     Serial.println("Use a 115200 baud serial terminal that sends keys immediately.");
 
     inputs.Add(keyboard);
+    inputs.Add(leftPin);
+    inputs.Add(rightPin);
     inputs.Begin();
 
     code.Shuffle();
