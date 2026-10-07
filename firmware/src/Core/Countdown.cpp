@@ -1,4 +1,4 @@
-﻿#include "Countdown.h"
+#include "Countdown.h"
 
 void Countdown::Start(uint32_t durationMs, uint32_t now) {
     startMs = now;
@@ -22,7 +22,6 @@ uint32_t Countdown::GetRemainingMs(uint32_t now) const {
     if (!running) {
         return frozenMs;
     }
-    // Unsigned subtraction: stays correct when millis() wraps back to 0.
     const uint32_t elapsedMs = now - startMs;
     return (elapsedMs >= totalMs) ? 0 : totalMs - elapsedMs;
 }

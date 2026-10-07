@@ -1,0 +1,47 @@
+#pragma once
+#include "BombCode.h"
+#include "Countdown.h"
+#include "Enigma/Enigma.h"
+#include "Inputs/Button.h"
+#include "Outputs/Screen.h"
+
+enum class GameState : uint8_t { Waiting, Playing, Defused, Exploded };
+
+class GameManager {
+public:
+    GameManager(Countdown &gameCountdown, const Button &startButton, BombCode &bombCode);
+
+    void AddScreen(Screen &screen);
+
+    void AddEnigma(Enigma &enigma);
+
+    void Update(uint32_t now);
+
+    void Draw(uint32_t now);
+
+    GameState GetState() const;
+
+private:
+    void StartGame(uint32_t now);
+
+    void UpdatePlaying(uint32_t now);
+
+    void ChangeState(GameState newState, uint32_t now);
+
+    static constexpr uint8_t MAX_ENIGMAS = 4;
+    static constexpr uint8_t MAX_SCREENS = 6;
+    static constexpr uint32_t BLINK_MS = 250;
+
+    Countdown &countdown;
+    const Button &start;
+    BombCode &code;
+
+    Enigma *enigmas[MAX_ENIGMAS] = {};
+    uint8_t enigmaCount = 0;
+    Screen *screens[MAX_SCREENS] = {};
+    uint8_t screenCount = 0;
+
+    GameState state = GameState::Waiting;
+    uint8_t currentEnigma = 0;
+    uint32_t stateStartMs = 0;
+};

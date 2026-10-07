@@ -1,13 +1,13 @@
 #include <Arduino.h>
 #include "Config.h"
 #include "Core/BombCode.h"
-#include "Core/Diagnostics.h"
 #include "Core/Palette.h"
 #include "Enigma/Enigma.h"
 #include "Enigma/SnakeEnigma.h"
 #include "Inputs/InputManager.h"
 #include "Inputs/KeyButton.h"
 #include "Inputs/SerialKeys.h"
+#include "Outputs/PanelOutput.h"
 #include "Outputs/Screen.h"
 #include "Outputs/SerialOutput.h"
 
@@ -16,35 +16,19 @@ KeyButton leftButton(keys, 'q');
 KeyButton rightButton(keys, 'd');
 InputManager inputs;
 
+#if defined(CUBE_HARDWARE)
+Screen snakeScreen(64, 64, 0);
+PanelOutput output(Pins::HUB75_CUBE, 2);
+#elif defined(MINI_PANEL)
+Screen snakeScreen(64, 64, 0);
+PanelOutput output(Pins::HUB75_MINI, 2);
+#else
 Screen snakeScreen(64, 64, 0);
 SerialOutput output;
+#endif
 
 BombCode code;
 SnakeEnigma snake(leftButton, rightButton, snakeScreen, code);
-
-Diagnostics diagnostics;
-
-static void PrintMemoryMap() {
-    const int localNumber = 42;
-
-    Serial.println("--- Where things live in memory ---");
-    Diagnostics::PrintMemory("snake (global)", &snake, sizeof(snake));
-    Diagnostics::PrintMemory("snakeScreen (global)", &snakeScreen, sizeof(snakeScreen));
-    Diagnostics::PrintMemory("snakeScreen pixels", snakeScreen.getBuffer(), 64 * 64 * 2);
-    Diagnostics::PrintMemory("code (global)", &code, sizeof(code));
-    Diagnostics::PrintMemory("localNumber (local)", &localNumber, sizeof(localNumber));
-    Diagnostics::PrintMemory("\"text\" (literal)", "text", 5);
-    Diagnostics::PrintFreeMemory();
-
-    Serial.println("Press a key to start (or wait 20 s)");
-    const uint32_t waitStartMs = millis();
-    while (Serial.available() == 0 && millis() - waitStartMs < 20000) {
-        delay(10);
-    }
-    while (Serial.available() > 0) {
-        Serial.read();
-    }
-}
 
 void setup() {
     Serial.begin(115200);
@@ -64,16 +48,11 @@ void setup() {
     inputs.Add(rightButton);
     inputs.Begin();
 
-    if (Debug::DIAGNOSTICS) {
-        PrintMemoryMap();
-    }
-
     code.Shuffle();
     snake.Start(millis());
 }
 
 void loop() {
-    diagnostics.BeginLoop();
     const uint32_t now = millis();
 
     inputs.Update(now);
@@ -90,8 +69,4 @@ void loop() {
     snakeScreen.fillScreen(Palette::BLACK);
     snake.Draw(now);
     output.Show();
-
-    if (Debug::DIAGNOSTICS) {
-        diagnostics.EndLoop(now);
-    }
 }

@@ -25,7 +25,7 @@ static char Glyph(uint16_t color) {
         case Palette::BLUE: return 'B';
         case Palette::YELLOW: return 'Y';
         case Palette::ORANGE: return 'O';
-        default: return '+'; // any other colour
+        default: return '+';
     }
 }
 
