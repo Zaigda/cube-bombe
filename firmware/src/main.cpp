@@ -1,72 +1,33 @@
 #include <Arduino.h>
+#include <ESP32-HUB75-MatrixPanel-I2S-DMA.h>
 #include "Config.h"
-#include "Core/BombCode.h"
-#include "Core/Palette.h"
-#include "Enigma/Enigma.h"
-#include "Enigma/SnakeEnigma.h"
-#include "Inputs/InputManager.h"
-#include "Inputs/KeyButton.h"
-#include "Inputs/SerialKeys.h"
-#include "Outputs/PanelOutput.h"
-#include "Outputs/Screen.h"
-#include "Outputs/SerialOutput.h"
 
-SerialKeys keys;
-KeyButton leftButton(keys, 'q');
-KeyButton rightButton(keys, 'd');
-InputManager inputs;
-
-#if defined(CUBE_HARDWARE)
-Screen snakeScreen(64, 64, 0);
-PanelOutput output(Pins::HUB75_CUBE, 2);
-#elif defined(MINI_PANEL)
-Screen snakeScreen(64, 64, 0);
-PanelOutput output(Pins::HUB75_MINI, 2);
-#else
-Screen snakeScreen(64, 64, 0);
-SerialOutput output;
-#endif
-
-BombCode code;
-SnakeEnigma snake(leftButton, rightButton, snakeScreen, code);
+MatrixPanel_I2S_DMA *panel = nullptr;
+bool panelStarted = false;
+uint32_t lastPrintMs = 0;
 
 void setup() {
     Serial.begin(115200);
-    delay(2000);
+    delay(3000);
 
-    output.AddScreen(snakeScreen);
-    if (!output.Begin()) {
-        Serial.println("Output failed to start: stopped");
-        while (true) {
-            delay(1000);
-        }
+    const HUB75_I2S_CFG::i2s_pins pins = {
+        Pins::HUB75.r1, Pins::HUB75.g1, Pins::HUB75.b1, Pins::HUB75.r2, Pins::HUB75.g2, Pins::HUB75.b2,
+        Pins::HUB75.a, Pins::HUB75.b, Pins::HUB75.c, Pins::HUB75.d, Pins::HUB75.e,
+        Pins::HUB75.lat, Pins::HUB75.oe, Pins::HUB75.clk
+    };
+    HUB75_I2S_CFG config(64, 32, 2, pins);
+    panel = new MatrixPanel_I2S_DMA(config);
+    panelStarted = panel->begin();
+    if (panelStarted) {
+        panel->setBrightness8(60);
+        panel->fillScreen(panel->color565(255, 0, 0));
     }
-    Serial.println("Bomb cube - step 4: snake");
-
-    inputs.Add(keys);
-    inputs.Add(leftButton);
-    inputs.Add(rightButton);
-    inputs.Begin();
-
-    code.Shuffle();
-    snake.Start(millis());
 }
 
 void loop() {
     const uint32_t now = millis();
-
-    inputs.Update(now);
-
-    const EnigmaEvent event = snake.Update(now);
-    if (event == EnigmaEvent::Mistake) {
-        Serial.println("Mistake!");
-    } else if (event == EnigmaEvent::Solved) {
-        Serial.println("Solved! New code, new game.");
-        code.Shuffle();
-        snake.Start(now);
+    if (now - lastPrintMs >= 1000) {
+        lastPrintMs = now;
+        Serial.println(panelStarted ? "Panel test: all red" : "Panel begin failed");
     }
-
-    snakeScreen.fillScreen(Palette::BLACK);
-    snake.Draw(now);
-    output.Show();
 }

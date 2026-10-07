@@ -42,8 +42,7 @@ namespace Pins {
         int8_t clk;
     };
 
-    constexpr Hub75 HUB75_CUBE = {15, 16, 17, 18, 11, 12, 13, 14, 39, 40, -1, 41, 42, 21};
-    constexpr Hub75 HUB75_MINI = {1, 2, 4, 5, 6, 7, 8, 9, 3, 11, -1, 13, 44, 12};
+    constexpr Hub75 HUB75 = {15, 16, 17, 18, 11, 12, 13, 14, 39, 40, -1, 41, 42, 21};
 
     constexpr uint8_t SNAKE_LEFT_BUTTON = 4;
     constexpr uint8_t SNAKE_RIGHT_BUTTON = 5;
