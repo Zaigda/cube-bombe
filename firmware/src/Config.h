@@ -42,7 +42,13 @@ namespace Pins {
         int8_t clk;
     };
 
-    constexpr Hub75 HUB75 = {15, 16, 17, 18, 11, 12, 13, 14, 39, 40, -1, 41, 42, 21};
+    constexpr Hub75 HUB75 = {
+        4, 5, 6,        // R1 G1 B1  (moitié haute)
+        7, 15, 16,      // R2 G2 B2  (moitié basse)
+        17, 18, 8, 3,   // A B C D   (sélection de ligne)
+        -1,             // E         (seulement pour les dalles 64×64 : par ex. 43)
+        46, 9, 10       // LAT OE CLK
+    };
 
     constexpr uint8_t SNAKE_LEFT_BUTTON = 4;
     constexpr uint8_t SNAKE_RIGHT_BUTTON = 5;
