@@ -1,4 +1,4 @@
-﻿#include "SnakeEnigma.h"
+#include "SnakeEnigma.h"
 #include <Arduino.h>
 #include "Config.h"
 #include "Core/Palette.h"

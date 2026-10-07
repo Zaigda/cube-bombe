@@ -1,6 +1,7 @@
 #pragma once
 #include "Button.h"
 
+// A push button between a pin and GND, using the internal pull-up, debounced (DEBOUNCE_MS).
 class PinButton : public Button {
 public:
     explicit PinButton(uint8_t buttonPin);

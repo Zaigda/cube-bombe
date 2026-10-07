@@ -1,4 +1,4 @@
-﻿#include "Output.h"
+#include "Output.h"
 #include <Arduino.h>
 
 void Output::AddScreen(Screen &screen) {

@@ -1,6 +1,7 @@
-﻿#pragma once
+#pragma once
 #include <cstdint>
 
+// The secret color order of a game. Shuffle() picks a new random order.
 class BombCode {
 public:
     static constexpr int LENGTH = 4;

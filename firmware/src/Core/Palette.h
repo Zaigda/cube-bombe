@@ -1,6 +1,7 @@
-﻿#pragma once
+#pragma once
 #include <cstdint>
 
+// Panel colors (RGB565). Rgb() converts usual 0-255 values.
 namespace Palette {
     constexpr uint16_t Rgb(uint8_t r, uint8_t g, uint8_t b) {
         return ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3);

@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "Enigma.h"
 #include "Core/BombCode.h"
 #include "Inputs/Button.h"
@@ -6,11 +6,13 @@
 
 enum class Direction : uint8_t { Up, Down, Left, Right };
 
+// One square of the snake grid; x and y count cells, not LEDs.
 struct Cell {
     int x;
     int y;
 };
 
+// Enigma 1: a two-button snake eats apples in the bomb code's color order; a crash restarts it.
 class SnakeEnigma : public Enigma {
 public:
     SnakeEnigma(const Button &leftButton, const Button &rightButton, Screen &snakeScreen, const BombCode &bombCode);

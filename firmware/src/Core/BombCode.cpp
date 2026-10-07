@@ -1,4 +1,4 @@
-﻿#include "BombCode.h"
+#include "BombCode.h"
 #include <Arduino.h>
 #include <utility>
 #include "Core/Palette.h"

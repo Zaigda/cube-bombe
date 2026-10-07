@@ -7,6 +7,9 @@ PinButton::PinButton(uint8_t buttonPin)
 
 void PinButton::Begin() {
     pinMode(pin, INPUT_PULLUP);
+    down = digitalRead(pin) == LOW;
+    lastReading = down;
+    lastChangeMs = millis();
 }
 
 void PinButton::Update(uint32_t now) {

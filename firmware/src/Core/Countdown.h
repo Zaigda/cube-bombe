@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdint>
 
+// The bomb timer: counts down, can be frozen with Stop() and shortened by penalties.
 class Countdown {
 public:
     void Start(uint32_t durationMs, uint32_t now);

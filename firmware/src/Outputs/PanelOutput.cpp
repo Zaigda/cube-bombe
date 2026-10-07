@@ -12,8 +12,9 @@ bool PanelOutput::Begin() {
                       Panels::MAX_PANELS);
         return false;
     }
+    bool panelUsed[Panels::MAX_PANELS] = {};
     for (uint8_t i = 0; i < screenCount; i++) {
-        if (!CheckScreen(*screens[i], i)) {
+        if (!CheckScreen(*screens[i], i, panelUsed)) {
             return false;
         }
     }
@@ -57,19 +58,27 @@ void PanelOutput::Show() {
     panels->flipDMABuffer();
 }
 
-bool PanelOutput::CheckScreen(const Screen &screen, uint8_t index) const {
+bool PanelOutput::CheckScreen(const Screen &screen, uint8_t index, bool panelUsed[]) const {
     if (!screen.HasPixels()) {
         Serial.printf("PanelOutput: screen %u has no pixels (not enough memory)\n", index);
         return false;
     }
     if (screen.width() != Panels::PANEL_WIDTH || screen.height() % Panels::PANEL_HEIGHT != 0) {
-        Serial.printf("PanelOutput: screen %u must be %u wide and 32, 64, 96... high\n", index, Panels::PANEL_WIDTH);
+        Serial.printf("PanelOutput: screen %u must be %u wide and a multiple of %u high\n", index, Panels::PANEL_WIDTH,
+                      Panels::PANEL_HEIGHT);
         return false;
     }
     const int panelsNeeded = screen.GetFirstPanel() + screen.height() / Panels::PANEL_HEIGHT;
     if (panelsNeeded > panelCount) {
         Serial.printf("PanelOutput: screen %u needs %d panels, the chain has %u\n", index, panelsNeeded, panelCount);
         return false;
+    }
+    for (int panel = screen.GetFirstPanel(); panel < panelsNeeded; panel++) {
+        if (panelUsed[panel]) {
+            Serial.printf("PanelOutput: screen %u is on panel %d, already used by another screen\n", index, panel);
+            return false;
+        }
+        panelUsed[panel] = true;
     }
     return true;
 }

@@ -1,6 +1,7 @@
 #pragma once
 #include "Sensor.h"
 
+// Keeps every sensor and calls Begin() and Update() on all of them.
 class InputManager {
 public:
     void Add(Sensor &sensor);

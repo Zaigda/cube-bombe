@@ -7,6 +7,7 @@
 
 enum class GameState : uint8_t { Waiting, Playing, Defused, Exploded };
 
+// A whole game, from waiting to defused or exploded. Not wired yet: to be rewritten for 3 boards.
 class GameManager {
 public:
     GameManager(Countdown &gameCountdown, const Button &startButton, BombCode &bombCode);
