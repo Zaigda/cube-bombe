@@ -11,10 +11,6 @@ uint32_t lastSendMs = 0;
 Microphone leftMicrophone(Pins::INPUT_LEFT_MICRO_ANALOG);
 Microphone rightMicrophone(Pins::INPUT_RIGHT_MICRO_ANALOG);
 
-constexpr uint32_t SEND_MS = 50;
-
-uint32_t lastSendMs = 0;
-
 MessageReader<OutputMessage> boardAReader;
 OutputMessage boardA = {};
 
