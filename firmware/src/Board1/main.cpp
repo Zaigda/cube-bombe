@@ -1,16 +1,19 @@
 #include <Arduino.h>
 #include "Config.h"
-#include "Core/BombCode.h"
-#include "Core/Palette.h"
-#include "Enigma/CableEnigma.h"
-#include "Enigma/Enigma.h"
-#include "Enigma/SnakeEnigma.h"
-#include "Inputs/CablePanel.h"
-#include "Inputs/InputManager.h"
-#include "Inputs/PinButton.h"
-#include "Outputs/PanelOutput.h"
-#include "Outputs/Screen.h"
-#include "Outputs/StatusLed.h"
+#include "Board1/Core/BombCode.h"
+#include "Board1/Core/Palette.h"
+#include "Board1/Enigma/CableEnigma.h"
+#include "Board1/Enigma/Enigma.h"
+#include "Board1/Enigma/SnakeEnigma.h"
+#include "Board1/Inputs/CablePanel.h"
+#include "Board1/Inputs/InputManager.h"
+#include "Board1/Inputs/PinButton.h"
+#include "Board1/Outputs/PanelOutput.h"
+#include "Board1/Outputs/Screen.h"
+#include "Board1/Outputs/StatusLed.h"
+
+#define UART_RX 1
+#define UART_TX 44
 
 PinButton leftButton(Pins::SNAKE_LEFT_BUTTON);
 PinButton rightButton(Pins::SNAKE_RIGHT_BUTTON);
@@ -41,6 +44,12 @@ void NewGame(uint32_t now) {
 
 void setup() {
     Serial.begin(115200);
+
+    // Communication entre ESP32
+    Serial2.begin(115200, SERIAL_8N1, UART_RX, UART_TX);
+
+    Serial.println("ESP32 A prêt !");
+
     delay(2000);
 
     output.AddScreen(snakeScreen);
@@ -113,4 +122,19 @@ void loop() {
     }
     output.Show();
     statusLed.Update(now);
+
+
+    // Envoyer un message à l'ESP32 B
+    Serial2.println("PING");
+
+    Serial.println("A -> B : PING");
+
+    // Vérifier si B a répondu
+    if (Serial2.available()) {
+
+        String message = Serial2.readStringUntil('\n');
+
+        Serial.print("B -> A : ");
+        Serial.println(message);
+    }
 }

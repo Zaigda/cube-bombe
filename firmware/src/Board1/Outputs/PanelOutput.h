@@ -1,6 +1,6 @@
 #pragma once
 #include "Output.h"
-#include "Config.h"
+#include "Board1/Config.h"
 
 class MatrixPanel_I2S_DMA;
 

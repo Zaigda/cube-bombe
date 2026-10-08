@@ -1,6 +1,6 @@
 #include "StatusLed.h"
 #include <Arduino.h>
-#include "Config.h"
+#include "Board1/Config.h"
 
 StatusLed::StatusLed(uint8_t ledPin)
     : pin(ledPin) {

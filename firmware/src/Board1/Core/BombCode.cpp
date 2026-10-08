@@ -1,7 +1,7 @@
 #include "BombCode.h"
 #include <Arduino.h>
 #include <utility>
-#include "Core/Palette.h"
+#include "Palette.h"
 
 static const uint16_t CABLE_COLORS[BombCode::CABLE_COUNT] = {Palette::RED, Palette::GREEN, Palette::BLUE};
 

@@ -1,9 +1,9 @@
 #pragma once
 #include "BombCode.h"
 #include "Countdown.h"
-#include "Enigma/Enigma.h"
-#include "Inputs/Button.h"
-#include "Outputs/Screen.h"
+#include "Board1/Enigma/Enigma.h"
+#include "Board1/Inputs/Button.h"
+#include "Board1/Outputs/Screen.h"
 
 enum class GameState : uint8_t { Waiting, Playing, Defused, Exploded };
 

@@ -1,8 +1,8 @@
 #include "GameManager.h"
 #include <Arduino.h>
 #include <cstdio>
-#include "Config.h"
-#include "Core/Palette.h"
+#include "Board1/Config.h"
+#include "Palette.h"
 
 static constexpr uint16_t TIMER_COLOR = Palette::Rgb(0, 120, 255);
 

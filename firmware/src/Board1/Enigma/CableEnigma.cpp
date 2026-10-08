@@ -1,5 +1,5 @@
 #include "CableEnigma.h"
-#include "Core/Palette.h"
+#include "Board1/Core/Palette.h"
 
 CableEnigma::CableEnigma(const CablePanel &cablePanel, Screen &cableScreen, const BombCode &bombCode)
     : cables(cablePanel), screen(cableScreen), code(bombCode) {

@@ -1,7 +1,7 @@
 #include "SnakeEnigma.h"
 #include <Arduino.h>
-#include "Config.h"
-#include "Core/Palette.h"
+#include "Board1/Config.h"
+#include "Board1/Core/Palette.h"
 
 static Direction TurnLeft(Direction direction) {
     switch (direction) {
