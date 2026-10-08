@@ -1,27 +1,29 @@
 #include <Arduino.h>
-#include "Config.h"
+#include "Common/InputMessage.h"
 
-String linkLine;
+constexpr uint8_t RX_PIN = 21;
+constexpr uint8_t TX_PIN = 1;
 
-void setup() {
+constexpr uint8_t INPUT_RESET_BUTTON = 4;
+
+void setup()
+{
     Serial.begin(115200);
-    Serial2.begin(LinkTuning::BAUD, SERIAL_8N1, Pins::LINK_RX, Pins::LINK_TX);
-    delay(2000);
-    Serial.println("Board 2 ready");
+
+    Serial2.begin(115200, SERIAL_8N1, RX_PIN, TX_PIN);
+
+    Serial.println("ESP32 - Board B - Initialized.");
+
+    pinMode(INPUT_RESET_BUTTON, INPUT_PULLUP);
 }
 
-void loop() {
-    while (Serial2.available()) {
-        const char c = static_cast<char>(Serial2.read());
-        if (c == '\n') {
-            linkLine.trim();
-            Serial.printf("A -> B : %s\n", linkLine.c_str());
-            linkLine = "";
+void loop()
+{
+    InputMessage inputMessage = {
+        .resetBtn = digitalRead(INPUT_RESET_BUTTON)
+    };
 
-            Serial2.println("PONG");
-            Serial.println("B -> A : PONG");
-        } else {
-            linkLine += c;
-        }
-    }
+    Serial2.write(reinterpret_cast<const uint8_t*>(&inputMessage), sizeof(inputMessage));
+
+    delay(1000);
 }

@@ -17,6 +17,7 @@
 #include "Board1/Outputs/RemoteLed.h"
 #include "Board1/Outputs/Screen.h"
 #include "Board1/Outputs/StatusLed.h"
+#include "Common/InputMessage.h"
 
 PinButton leftButton(Pins::SNAKE_LEFT_BUTTON);
 PinButton rightButton(Pins::SNAKE_RIGHT_BUTTON);
@@ -92,4 +93,16 @@ void loop() {
     snakeStation.Draw(now);
     invadersStation.Draw(now);
     output.Show();
+
+    // Get inputs from ESP32 - Board B
+    if (Serial2.available() >= sizeof(InputMessage))
+    {
+        InputMessage msg;
+
+        size_t received = Serial2.readBytes(reinterpret_cast<uint8_t*>(&msg), sizeof(msg));
+
+        if (received == sizeof(msg)) {
+            Serial.printf("Reset Button: %u\n", msg.resetBtn);
+        }
+    }
 }
