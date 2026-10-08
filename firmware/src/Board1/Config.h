@@ -50,6 +50,8 @@ namespace InvadersTuning {
 // The serial link between the boards: both boards use the same speed.
 namespace LinkTuning {
     constexpr uint32_t BAUD = 115200;
+    constexpr uint32_t SEND_MS = 50;
+    constexpr uint32_t TIMEOUT_MS = 500;
 }
 
 // What every enigma station shows around its game: "RATE" duration and where "START" is written.
@@ -124,7 +126,7 @@ namespace Pins {
     constexpr uint8_t SNAKE_RESET_BUTTON = 40;
     constexpr uint8_t STATUS_LED = 39;
     constexpr uint8_t CABLES[3] = {11, 12, 13};
-    constexpr uint8_t PLUGS[3] = {47, 48, 45};
+    constexpr uint8_t PLUGS[3] = {48, 47, 45};
     constexpr uint8_t LINK_TX = 21;
     constexpr uint8_t LINK_RX = 1;
 
