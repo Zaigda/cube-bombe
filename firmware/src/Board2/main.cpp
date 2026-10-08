@@ -18,9 +18,9 @@ uint32_t lastRecievedMs = 0;
 
 void ReceiveFromBoardA(uint32_t now) {
     if (boardAReader.Read(Serial2, boardA)) {
-        lastSendMs = now;
+        lastRecievedMs = now;
     }
-    if (now - lastSendMs >= LinkTuning::TIMEOUT_MS) {
+    if (now - lastRecievedMs >= LinkTuning::TIMEOUT_MS) {
         boardA = {};
     }
     gameStateLed.Set(boardA.ledState);
@@ -56,6 +56,7 @@ void setup()
     Serial.println("ESP32 - Board B - Initialized.");
 
     pinMode(Pins::INPUT_RESET_BUTTON, INPUT_PULLUP);
+    gameStateLed.Begin();
     leftMicrophone.Begin();
     rightMicrophone.Begin();
 }
