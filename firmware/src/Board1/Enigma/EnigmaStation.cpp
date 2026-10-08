@@ -4,7 +4,7 @@
 #include "Board1/Core/Palette.h"
 
 EnigmaStation::EnigmaStation(const char *stationName, Enigma &stationEnigma, const Button &startButton,
-                             Led &statusLed, Screen &textScreen)
+                             Led &statusLed, Screen *textScreen)
     : name(stationName), enigma(stationEnigma), start(startButton), led(statusLed), screen(textScreen) {
 }
 
@@ -44,20 +44,27 @@ void EnigmaStation::Update(uint32_t now) {
 }
 
 void EnigmaStation::Draw(uint32_t now) {
+    if (screen == nullptr) {
+        if (phase == Phase::Paused || phase == Phase::Playing) {
+            enigma.Draw(now);
+        }
+        return;
+    }
+
     switch (phase) {
         case Phase::Paused:
             enigma.Draw(now);
-            screen.DrawCenteredText("START", Palette::WHITE, StationTuning::START_TEXT_TOP);
+            screen->DrawCenteredText("START", Palette::WHITE, StationTuning::START_TEXT_TOP);
             break;
         case Phase::Playing:
             enigma.Draw(now);
             break;
         case Phase::Failed:
-            screen.fillScreen(Palette::RED);
-            screen.DrawCenteredText("RATE", Palette::WHITE);
+            screen->fillScreen(Palette::RED);
+            screen->DrawCenteredText("RATE", Palette::WHITE);
             break;
         case Phase::Solved:
-            screen.DrawCenteredText("DESAMORCE", Palette::GREEN);
+            screen->DrawCenteredText("DESAMORCE", Palette::GREEN);
             break;
     }
 }

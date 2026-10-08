@@ -47,6 +47,41 @@ namespace InvadersTuning {
     constexpr uint32_t REPLAY_MAX_MS = 5000;
 }
 
+// Light enigma values (enigma 3), from the GD sheet. A hole is covered below COVERED_PERCENT of its light at Start.
+// Each pattern = the 6 holes to cover, grid order 0 1 2 / 3 4 5 / 6 7 8.
+namespace LightTuning {
+    constexpr int HOLE_COUNT = 9;
+    constexpr int COVERED_PERCENT = 50;
+    constexpr int PATTERN_COUNT = 6;
+    constexpr bool PATTERNS[PATTERN_COUNT][HOLE_COUNT] = {
+        {1, 1, 0,
+         1, 1, 1,
+         0, 1, 0},
+        {1, 0, 0,
+         1, 1, 0,
+         1, 1, 1},
+        {0, 1, 1,
+         1, 0, 1,
+         1, 1, 0},
+        {1, 1, 1,
+         1, 0, 1,
+         1, 0, 0},
+        {1, 1, 1,
+         1, 1, 0,
+         0, 1, 0},
+        {1, 1, 1,
+         0, 1, 0,
+         1, 1, 0},
+    };
+}
+
+// The serial link between the boards: both boards use the same speed.
+namespace LinkTuning {
+    constexpr uint32_t BAUD = 115200;
+    constexpr uint32_t SEND_MS = 50;
+    constexpr uint32_t TIMEOUT_MS = 500;
+}
+
 // What every enigma station shows around its game: "RATE" duration and where "START" is written.
 namespace StationTuning {
     constexpr uint32_t FAIL_MS = 1000;
@@ -117,6 +152,8 @@ namespace Pins {
     constexpr uint8_t PLUGS[3] = {48, 47, 45};
     constexpr uint8_t LINK_TX = 21;
     constexpr uint8_t LINK_RX = 1;
+    constexpr uint8_t LIGHT_LINK_TX = 14;
+    constexpr uint8_t LIGHT_LINK_RX = 2;
 
     static_assert(!IsReservedPin(SNAKE_LEFT_BUTTON), "SNAKE_LEFT_BUTTON is on a reserved pin");
     static_assert(!IsReservedPin(SNAKE_RIGHT_BUTTON), "SNAKE_RIGHT_BUTTON is on a reserved pin");
@@ -127,4 +164,5 @@ namespace Pins {
     static_assert(!IsReservedPin(PLUGS[0]) && !IsReservedPin(PLUGS[1]) && !IsReservedPin(PLUGS[2]),
                   "a plug is on a reserved pin");
     static_assert(!IsReservedPin(LINK_TX) && !IsReservedPin(LINK_RX), "a link pin is on a reserved pin");
+    static_assert(!IsReservedPin(LIGHT_LINK_TX) && !IsReservedPin(LIGHT_LINK_RX), "a light link pin is reserved");
 }
