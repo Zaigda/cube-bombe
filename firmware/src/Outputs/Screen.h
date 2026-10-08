@@ -14,6 +14,10 @@ public:
 
     bool HasPixels() const;
 
+    void DrawCenteredText(const char *text, uint16_t color);
+
+    void DrawCenteredText(const char *text, uint16_t color, int16_t top);
+
 private:
     uint8_t firstPanel;
 };

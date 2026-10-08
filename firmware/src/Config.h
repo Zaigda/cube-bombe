@@ -8,13 +8,26 @@ namespace Timing {
     constexpr uint32_t RESULT_SCREEN_MS = 10 * 1000;
 }
 
-// Snake gameplay values (enigma 1).
+// Snake gameplay values (enigma 1), from the GD sheet. Positions and lengths are in LEDs, y counted from the top.
 namespace SnakeTuning {
-    constexpr int CELL_SIZE = 4;
-    constexpr uint32_t STEP_MS = 300;
-    constexpr int START_LENGTH = 2;
-    constexpr int START_COLUMN = 3;
-    constexpr int GROWTH_FACTOR = 2;
+    constexpr int CELL_SIZE = 2;
+    constexpr uint32_t STEP_MS = 250;
+    constexpr int START_X = 16;
+    constexpr int START_Y = 48;
+    constexpr int LEVEL_LENGTHS[3] = {16, 32, 48};
+    constexpr int FIRST_APPLE_MIN_X = 32;
+    constexpr int FIRST_APPLE_MAX_X = 48;
+    constexpr int FIRST_APPLE_MIN_Y = 16;
+    constexpr int FIRST_APPLE_MAX_Y = 32;
+    constexpr int MOUTH_SIZE = 4;
+    constexpr uint32_t MOUTH_MS = 250;
+    constexpr uint32_t FAIL_MS = 1000;
+    constexpr int16_t START_TEXT_TOP = 8;
+}
+
+// The status LED of the enigma.
+namespace StatusLight {
+    constexpr uint32_t BLINK_MS = 400;
 }
 
 // The chain of HUB75 panels. Panel 0 is the one plugged into the board.
@@ -73,9 +86,17 @@ namespace Pins {
 
     constexpr uint8_t SNAKE_LEFT_BUTTON = 41;
     constexpr uint8_t SNAKE_RIGHT_BUTTON = 42;
-    constexpr uint8_t START_BUTTON = 13;
+    constexpr uint8_t SNAKE_RESET_BUTTON = 40;
+    constexpr uint8_t STATUS_LED = 39;
+    constexpr uint8_t CABLES[3] = {11, 12, 13};
+    constexpr uint8_t PLUGS[3] = {47, 48, 45};
 
     static_assert(!IsReservedPin(SNAKE_LEFT_BUTTON), "SNAKE_LEFT_BUTTON is on a reserved pin");
     static_assert(!IsReservedPin(SNAKE_RIGHT_BUTTON), "SNAKE_RIGHT_BUTTON is on a reserved pin");
-    static_assert(!IsReservedPin(START_BUTTON), "START_BUTTON is on a reserved pin");
+    static_assert(!IsReservedPin(SNAKE_RESET_BUTTON), "SNAKE_RESET_BUTTON is on a reserved pin");
+    static_assert(!IsReservedPin(STATUS_LED), "STATUS_LED is on a reserved pin");
+    static_assert(!IsReservedPin(CABLES[0]) && !IsReservedPin(CABLES[1]) && !IsReservedPin(CABLES[2]),
+                  "a cable is on a reserved pin");
+    static_assert(!IsReservedPin(PLUGS[0]) && !IsReservedPin(PLUGS[1]) && !IsReservedPin(PLUGS[2]),
+                  "a plug is on a reserved pin");
 }

@@ -12,7 +12,8 @@ struct Cell {
     int y;
 };
 
-// Enigma 1: a two-button snake eats apples in the bomb code's color order; a crash restarts it.
+// Enigma 1: a two-button snake plays one level per cable (snake = cable color, apple = its plug's color);
+// a crash restarts it at level 1 with the same code.
 class SnakeEnigma : public Enigma {
 public:
     SnakeEnigma(const Button &leftButton, const Button &rightButton, Screen &snakeScreen, const BombCode &bombCode);
@@ -36,6 +37,10 @@ private:
 
     void PlaceApple();
 
+    void PlaceFirstApple();
+
+    static int LevelLength(int level);
+
     static constexpr int MAX_LENGTH = 64;
 
     const Button &turnLeftButton;
@@ -53,4 +58,5 @@ private:
     uint32_t lastStepMs = 0;
     Cell apple = {0, 0};
     int applesEaten = 0;
+    uint32_t lastEatMs = 0;
 };

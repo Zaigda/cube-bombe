@@ -1,15 +1,22 @@
 #pragma once
 #include <cstdint>
 
-// The secret color order of a game. Shuffle() picks a new random order.
+// The secret of a game: which plug each cable goes into, and in which order the cables' levels are played.
 class BombCode {
 public:
-    static constexpr int LENGTH = 4;
+    static constexpr int CABLE_COUNT = 3;
 
     void Shuffle();
 
-    uint16_t GetColor(int index) const;
+    int GetLevelCable(int level) const;
+
+    int GetPlug(int cable) const;
+
+    uint16_t GetCableColor(int cable) const;
+
+    uint16_t GetPlugColor(int plug) const;
 
 private:
-    int order[LENGTH] = {0, 1, 2, 3};
+    int levelCable[CABLE_COUNT] = {0, 1, 2};
+    int plugOfCable[CABLE_COUNT] = {0, 1, 2};
 };

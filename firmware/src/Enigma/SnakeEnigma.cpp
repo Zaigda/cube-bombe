@@ -44,10 +44,10 @@ void SnakeEnigma::Start(uint32_t now) {
     columns = screen.width() / SnakeTuning::CELL_SIZE;
     rows = screen.height() / SnakeTuning::CELL_SIZE;
 
-    length = SnakeTuning::START_LENGTH;
-    targetLength = SnakeTuning::START_LENGTH;
+    length = LevelLength(0);
+    targetLength = length;
     for (int i = 0; i < length; i++) {
-        body[i] = {SnakeTuning::START_COLUMN - i, rows / 2};
+        body[i] = {SnakeTuning::START_X / SnakeTuning::CELL_SIZE - i, SnakeTuning::START_Y / SnakeTuning::CELL_SIZE};
     }
 
     direction = Direction::Right;
@@ -55,7 +55,8 @@ void SnakeEnigma::Start(uint32_t now) {
     lastStepMs = now;
 
     applesEaten = 0;
-    PlaceApple();
+    lastEatMs = 0;
+    PlaceFirstApple();
 }
 
 EnigmaEvent SnakeEnigma::Update(uint32_t now) {
@@ -79,26 +80,36 @@ EnigmaEvent SnakeEnigma::Update(uint32_t now) {
 
     if (SameCell(next, apple)) {
         applesEaten++;
-        if (applesEaten == BombCode::LENGTH) {
+        if (applesEaten == BombCode::CABLE_COUNT) {
             return EnigmaEvent::Solved;
         }
-        targetLength = min(targetLength * SnakeTuning::GROWTH_FACTOR, MAX_LENGTH);
+        lastEatMs = now;
+        targetLength = LevelLength(applesEaten);
         PlaceApple();
     }
     return EnigmaEvent::None;
 }
 
-void SnakeEnigma::Draw(uint32_t) {
+void SnakeEnigma::Draw(uint32_t now) {
     const int size = SnakeTuning::CELL_SIZE;
 
-    if (applesEaten < BombCode::LENGTH) {
-        screen.fillRect(apple.x * size, apple.y * size, size, size, code.GetColor(applesEaten));
+    if (applesEaten >= BombCode::CABLE_COUNT) {
+        return;
     }
 
-    for (int i = 0; i < length; i++) {
-        const uint16_t color = (i == 0) ? Palette::ORANGE : Palette::WHITE;
-        screen.fillRect(body[i].x * size, body[i].y * size, size, size, color);
+    const int cable = code.GetLevelCable(applesEaten);
+    screen.fillRect(apple.x * size, apple.y * size, size, size, code.GetPlugColor(code.GetPlug(cable)));
+
+    for (int i = length - 1; i > 0; i--) {
+        screen.fillRect(body[i].x * size, body[i].y * size, size, size, code.GetCableColor(cable));
     }
+
+    int headSize = size;
+    if (lastEatMs != 0 && now - lastEatMs < SnakeTuning::MOUTH_MS) {
+        headSize = SnakeTuning::MOUTH_SIZE;
+    }
+    const int offset = (headSize - size) / 2;
+    screen.fillRect(body[0].x * size - offset, body[0].y * size - offset, headSize, headSize, Palette::WHITE);
 }
 
 void SnakeEnigma::ReadTurns() {
@@ -156,4 +167,19 @@ void SnakeEnigma::PlaceApple() {
     do {
         apple = {static_cast<int>(random(columns)), static_cast<int>(random(rows))};
     } while (IsOnSnake(apple, length));
+}
+
+void SnakeEnigma::PlaceFirstApple() {
+    const int size = SnakeTuning::CELL_SIZE;
+    const int minColumn = SnakeTuning::FIRST_APPLE_MIN_X / size + 1;
+    const int maxColumn = (SnakeTuning::FIRST_APPLE_MAX_X - 1) / size;
+    const int minRow = SnakeTuning::FIRST_APPLE_MIN_Y / size + 1;
+    const int maxRow = (SnakeTuning::FIRST_APPLE_MAX_Y - 1) / size;
+    do {
+        apple = {static_cast<int>(random(minColumn, maxColumn + 1)), static_cast<int>(random(minRow, maxRow + 1))};
+    } while (IsOnSnake(apple, length));
+}
+
+int SnakeEnigma::LevelLength(int level) {
+    return min(SnakeTuning::LEVEL_LENGTHS[level] / SnakeTuning::CELL_SIZE, MAX_LENGTH);
 }
