@@ -3,138 +3,93 @@
 #include "Board1/Core/BombCode.h"
 #include "Board1/Core/Palette.h"
 #include "Board1/Enigma/CableEnigma.h"
-#include "Board1/Enigma/Enigma.h"
+#include "Board1/Enigma/EnigmaStation.h"
+#include "Board1/Enigma/InvadersEnigma.h"
+#include "Board1/Enigma/SnakeCablesEnigma.h"
 #include "Board1/Enigma/SnakeEnigma.h"
 #include "Board1/Inputs/CablePanel.h"
+#include "Board1/Inputs/EitherButton.h"
 #include "Board1/Inputs/InputManager.h"
 #include "Board1/Inputs/PinButton.h"
+#include "Board1/Inputs/RemoteButton.h"
+#include "Board1/Link/BoardLink.h"
 #include "Board1/Outputs/PanelOutput.h"
+#include "Board1/Outputs/RemoteLed.h"
 #include "Board1/Outputs/Screen.h"
 #include "Board1/Outputs/StatusLed.h"
 
-#define UART_RX 1
-#define UART_TX 44
-
 PinButton leftButton(Pins::SNAKE_LEFT_BUTTON);
 PinButton rightButton(Pins::SNAKE_RIGHT_BUTTON);
-PinButton resetButton(Pins::SNAKE_RESET_BUTTON);
+PinButton snakeStartButton(Pins::SNAKE_RESET_BUTTON);
 CablePanel cables(Pins::CABLES, Pins::PLUGS);
+
+RemoteButton invadersStartButton;
+RemoteButton leftMic;
+RemoteButton rightMic;
+EitherButton shipLeft(leftMic, leftButton);
+EitherButton shipRight(rightMic, rightButton);
+
+StatusLed snakeLed(Pins::STATUS_LED);
+RemoteLed invadersLed;
+
+BoardLink boardLink(Serial2, invadersStartButton, leftMic, rightMic, invadersLed);
 InputManager inputs;
 
-StatusLed statusLed(Pins::STATUS_LED);
-
 Screen snakeScreen(Panels::PANEL_WIDTH, Panels::SNAKE_PANELS * Panels::PANEL_HEIGHT, 0);
+Screen guideScreen(Panels::PANEL_WIDTH, Panels::PANEL_HEIGHT, Panels::GUIDE_PANEL);
+Screen singerScreen(Panels::PANEL_WIDTH, Panels::PANEL_HEIGHT, Panels::SINGER_PANEL);
 PanelOutput output(Pins::HUB75, Panels::PANEL_COUNT);
 
 BombCode code;
 SnakeEnigma snake(leftButton, rightButton, snakeScreen, code);
 CableEnigma cableEnigma(cables, snakeScreen, code);
+SnakeCablesEnigma snakeCables(snake, cableEnigma, code);
+InvadersEnigma invaders(shipLeft, shipRight, guideScreen, singerScreen);
 
-enum class Phase : uint8_t { Paused, Snake, Failed, Cables, Solved };
-
-Phase phase = Phase::Paused;
-uint32_t failedMs = 0;
-
-void NewGame(uint32_t now) {
-    code.Shuffle();
-    snake.Start(now);
-    statusLed.Set(LedState::Off);
-    phase = Phase::Paused;
-}
+EnigmaStation snakeStation("Snake", snakeCables, snakeStartButton, snakeLed, snakeScreen);
+EnigmaStation invadersStation("Invaders", invaders, invadersStartButton, invadersLed, guideScreen);
 
 void setup() {
     Serial.begin(115200);
-
-    // Communication entre ESP32
-    Serial2.begin(115200, SERIAL_8N1, UART_RX, UART_TX);
-
-    Serial.println("ESP32 A prêt !");
-
     delay(2000);
 
     output.AddScreen(snakeScreen);
+    output.AddScreen(guideScreen);
+    output.AddScreen(singerScreen);
     if (!output.Begin()) {
         Serial.println("Output failed to start: stopped");
         while (true) {
             delay(1000);
         }
     }
-    Serial.println("Bomb cube - snake, press Start");
+    Serial.println("Bomb cube - board 1");
 
     inputs.Add(leftButton);
     inputs.Add(rightButton);
-    inputs.Add(resetButton);
+    inputs.Add(snakeStartButton);
     inputs.Add(cables);
+    inputs.Add(boardLink);
+    inputs.Add(invadersStartButton);
+    inputs.Add(leftMic);
+    inputs.Add(rightMic);
     inputs.Begin();
-    statusLed.Begin();
 
-    NewGame(millis());
+    snakeStation.Begin(millis());
+    invadersStation.Begin(millis());
 }
 
 void loop() {
     const uint32_t now = millis();
 
     inputs.Update(now);
-
-    if (resetButton.WasPressed()) {
-        if (phase == Phase::Paused) {
-            Serial.println("Start");
-            statusLed.Set(LedState::Blinking);
-            phase = Phase::Snake;
-        } else {
-            Serial.println("Reset: new code, paused");
-            NewGame(now);
-        }
-    }
-
-    if (phase == Phase::Snake) {
-        const EnigmaEvent event = snake.Update(now);
-        if (event == EnigmaEvent::Mistake) {
-            Serial.println("Mistake! Back to level 1");
-            failedMs = now;
-            phase = Phase::Failed;
-        } else if (event == EnigmaEvent::Solved) {
-            Serial.println("Snake done: plug the cables");
-            cableEnigma.Start(now);
-            phase = Phase::Cables;
-        }
-    } else if (phase == Phase::Failed && now - failedMs >= SnakeTuning::FAIL_MS) {
-        phase = Phase::Snake;
-    } else if (phase == Phase::Cables && cableEnigma.Update(now) == EnigmaEvent::Solved) {
-        Serial.println("Cables right: enigma solved!");
-        statusLed.Set(LedState::On);
-        phase = Phase::Solved;
-    }
+    snakeStation.Update(now);
+    invadersStation.Update(now);
+    boardLink.SetSoundHz(invadersStation.IsPlaying() ? invaders.GetSoundHz(now) : 0);
 
     snakeScreen.fillScreen(Palette::BLACK);
-    if (phase == Phase::Paused) {
-        snake.Draw(now);
-        snakeScreen.DrawCenteredText("START", Palette::WHITE, SnakeTuning::START_TEXT_TOP);
-    } else if (phase == Phase::Snake) {
-        snake.Draw(now);
-    } else if (phase == Phase::Failed) {
-        snakeScreen.fillScreen(Palette::RED);
-        snakeScreen.DrawCenteredText("RATE", Palette::WHITE);
-    } else if (phase == Phase::Cables) {
-        cableEnigma.Draw(now);
-    } else {
-        snakeScreen.DrawCenteredText("DESAMORCE", Palette::GREEN);
-    }
+    guideScreen.fillScreen(Palette::BLACK);
+    singerScreen.fillScreen(Palette::BLACK);
+    snakeStation.Draw(now);
+    invadersStation.Draw(now);
     output.Show();
-    statusLed.Update(now);
-
-
-    // Envoyer un message à l'ESP32 B
-    Serial2.println("PING");
-
-    Serial.println("A -> B : PING");
-
-    // Vérifier si B a répondu
-    if (Serial2.available()) {
-
-        String message = Serial2.readStringUntil('\n');
-
-        Serial.print("B -> A : ");
-        Serial.println(message);
-    }
 }
