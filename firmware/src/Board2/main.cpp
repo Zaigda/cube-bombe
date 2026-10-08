@@ -45,5 +45,11 @@ void loop()
         .rightBtn = rightMicrophone.Detected()
     };
 
+    if (inputMessage.leftBtn && inputMessage.rightBtn) {
+        // Choose the louder microphone; an exact tie goes to the left.
+        inputMessage.leftBtn = leftMicrophone.Level() >= rightMicrophone.Level();
+        inputMessage.rightBtn = !inputMessage.leftBtn;
+    }
+
     MessageLink::Send(Serial2, inputMessage);
 }
