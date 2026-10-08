@@ -5,11 +5,11 @@
 #include "Board1/Outputs/Led.h"
 
 // The box around one enigma: its Start/Reset button, its status LED, and the screens shown around the game
-// (paused with "START", "RATE" after a mistake, "DESAMORCE" once solved).
+// (paused with "START", "RATE" after a mistake, "DESAMORCE" once solved). textScreen can be nullptr.
 class EnigmaStation {
 public:
     EnigmaStation(const char *stationName, Enigma &stationEnigma, const Button &startButton, Led &statusLed,
-                  Screen &textScreen);
+                  Screen *textScreen);
 
     void Begin(uint32_t now);
 
@@ -28,7 +28,7 @@ private:
     Enigma &enigma;
     const Button &start;
     Led &led;
-    Screen &screen;
+    Screen *screen;
 
     Phase phase = Phase::Paused;
     uint32_t failedMs = 0;
