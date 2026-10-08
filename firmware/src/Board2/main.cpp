@@ -2,12 +2,21 @@
 #include "Config.h"
 #include "Microphone.h"
 #include "Common/InputMessage.h"
+#include "Common/MessageLink.h"
+#include "Common/OutputMessage.h"
 
 constexpr uint32_t SEND_MS = 50;
 
 uint32_t lastSendMs = 0;
 Microphone leftMicrophone(Pins::INPUT_LEFT_MICRO_ANALOG);
 Microphone rightMicrophone(Pins::INPUT_RIGHT_MICRO_ANALOG);
+
+constexpr uint32_t SEND_MS = 50;
+
+uint32_t lastSendMs = 0;
+
+MessageReader<OutputMessage> boardAReader;
+OutputMessage boardA = {};
 
 void setup()
 {
@@ -40,5 +49,5 @@ void loop()
         .rightBtn = rightMicrophone.Detected()
     };
 
-    Serial2.write(reinterpret_cast<const uint8_t*>(&inputMessage), sizeof(inputMessage));
+    MessageLink::Send(Serial2, inputMessage);
 }
