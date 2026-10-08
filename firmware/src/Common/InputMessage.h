@@ -5,4 +5,6 @@
 struct InputMessage
 {
     bool resetBtn;
+    bool leftBtn;
+    bool rightBtn;
 };

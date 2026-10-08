@@ -172,6 +172,35 @@ A GPIO (or pin) is a numbered leg of the board. Pins take 3.3 V only: never put 
 
 ## Build and upload
 
+### Board2 sound sensor
+
+Connect the left sensor's **AO to GPIO 13** (`Pins::INPUT_LEFT_MICRO_ANALOG`) and the right sensor's
+**AO to GPIO 14** (`Pins::INPUT_RIGHT_MICRO_ANALOG`). On both sensors, connect **G to GND** and **+ to 3.3 V**;
+leave DO disconnected.
+`Microphone` in `Board2/Microphone.h` handles each sensor independently: construct with `(pin)`,
+call `Begin()` in setup and `Update()` every loop.
+`Detected()` returns the current detection state. Both instances share sensitivity settings but have separate
+background estimates and timers.
+Build from `firmware/` with `pio run -e board-b`, then upload with `pio run -e board-b -t upload`.
+Open the USB serial monitor at 115200 baud (`pio device monitor -b 115200`; select Board2's port if needed).
+
+Board2 samples AO at a target 4 kHz without blocking and computes RMS after removing the mean over 50 ms windows.
+At startup, leave the usual background noise present but do not shout for two seconds (detection stays false during calibration).
+The threshold is the larger of background times `NOISE_RATIO` (2) and background plus `MIN_MARGIN` (15 RMS ADC counts).
+Two consecutive loud windows trigger detection; five windows below a lower release threshold clear it.
+The background estimate slowly follows ambient changes when no shout is being detected or confirmed.
+Levels are relative RMS values, not decibels or the old instantaneous values around 400.
+Lower `NOISE_RATIO`/`MIN_MARGIN` in `Board2/Config.h` if a loud sound
+near the microphone does not trigger; raise them if ambient sounds trigger. Defaults require testing at the intended distance.
+Test silence, nearby player sounds, a brief clap, and the expected background noise. Two consecutive 50 ms windows
+above threshold trigger detection; an isolated loud window does not. Test release after stopping as well.
+This detects sustained loud sound, not human voices specifically. A sudden, sustained increase in ambient noise
+can trigger and keep detection active; restart in the new ambient noise to recalibrate. Clipping or a shout masked
+by background noise cannot be corrected by this detector alone.
+The reset button and both microphone detection states are sent to Board1 every 50 ms.
+
+### General build instructions
+
 PlatformIO builds the firmware and uploads it to the board. The project is the `firmware/` folder, with one env (build setup): `cube`.
 The first build downloads the libraries (a few minutes). Close the monitor before an upload. Upload stuck: hold BOOT, press RST, release BOOT, retry.
 - **VS Code** (PlatformIO extension): PlatformIO icon in the left bar > Project Tasks > cube > General > Upload, then Monitor.

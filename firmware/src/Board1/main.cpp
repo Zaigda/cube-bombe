@@ -103,6 +103,8 @@ void loop() {
 
         if (received == sizeof(msg)) {
             Serial.printf("Reset Button: %u\n", msg.resetBtn);
+            Serial.printf("Left Button: %u\n", msg.leftBtn);
+            Serial.printf("Right Button: %u\n", msg.rightBtn);
         }
     }
 }

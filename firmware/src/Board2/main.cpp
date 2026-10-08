@@ -1,29 +1,44 @@
 #include <Arduino.h>
+#include "Config.h"
+#include "Microphone.h"
 #include "Common/InputMessage.h"
 
-constexpr uint8_t RX_PIN = 21;
-constexpr uint8_t TX_PIN = 1;
+constexpr uint32_t SEND_MS = 50;
 
-constexpr uint8_t INPUT_RESET_BUTTON = 4;
+uint32_t lastSendMs = 0;
+Microphone leftMicrophone(Pins::INPUT_LEFT_MICRO_ANALOG);
+Microphone rightMicrophone(Pins::INPUT_RIGHT_MICRO_ANALOG);
 
 void setup()
 {
     Serial.begin(115200);
 
-    Serial2.begin(115200, SERIAL_8N1, RX_PIN, TX_PIN);
+    Serial2.begin(115200, SERIAL_8N1, Pins::LINK_RX, Pins::LINK_TX);
 
     Serial.println("ESP32 - Board B - Initialized.");
 
-    pinMode(INPUT_RESET_BUTTON, INPUT_PULLUP);
+    pinMode(Pins::INPUT_RESET_BUTTON, INPUT_PULLUP);
+    leftMicrophone.Begin();
+    rightMicrophone.Begin();
 }
 
 void loop()
 {
+    leftMicrophone.Update();
+    rightMicrophone.Update();
+
+    const uint32_t now = millis();
+    if (now - lastSendMs < SEND_MS)
+    {
+        return;
+    }
+    lastSendMs = now;
+
     InputMessage inputMessage = {
-        .resetBtn = digitalRead(INPUT_RESET_BUTTON)
+        .resetBtn = digitalRead(Pins::INPUT_RESET_BUTTON) == LOW,
+        .leftBtn = leftMicrophone.Detected(),
+        .rightBtn = rightMicrophone.Detected()
     };
 
     Serial2.write(reinterpret_cast<const uint8_t*>(&inputMessage), sizeof(inputMessage));
-
-    delay(1000);
 }
