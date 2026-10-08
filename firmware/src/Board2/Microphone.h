@@ -19,6 +19,7 @@ public:
     }
 
     bool Detected() const { return detected; }
+    float Level() const { return level; }
 
     void Update() {
         const uint32_t nowUs = micros();
@@ -33,7 +34,7 @@ public:
         if (now - lastWindowMs < SoundTuning::WINDOW_MS) return;
         lastWindowMs = now;
         if (samples < 2) return;
-        const float level = std::sqrt(std::max(0.0f, squaredDeviation / samples));
+        level = std::sqrt(std::max(0.0f, squaredDeviation / samples));
         samples = 0;
         mean = squaredDeviation = 0;
 
@@ -70,7 +71,7 @@ private:
     uint8_t pin;
     uint32_t lastSampleUs = 0, lastWindowMs = 0;
     uint32_t samples = 0, calibrationWindows = 0;
-    float mean = 0, squaredDeviation = 0, background = 0;
+    float mean = 0, squaredDeviation = 0, background = 0, level = 0;
     uint8_t attack = 0, release = 0;
     bool detected = false;
 };
