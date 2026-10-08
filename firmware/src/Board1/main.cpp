@@ -8,11 +8,9 @@
 #include "Board1/Enigma/SnakeCablesEnigma.h"
 #include "Board1/Enigma/SnakeEnigma.h"
 #include "Board1/Inputs/CablePanel.h"
-#include "Board1/Inputs/EitherButton.h"
 #include "Board1/Inputs/InputManager.h"
 #include "Board1/Inputs/PinButton.h"
 #include "Board1/Inputs/RemoteButton.h"
-#include "Board1/Link/BoardLink.h"
 #include "Board1/Outputs/PanelOutput.h"
 #include "Board1/Outputs/RemoteLed.h"
 #include "Board1/Outputs/Screen.h"
@@ -22,19 +20,12 @@
 PinButton leftButton(Pins::SNAKE_LEFT_BUTTON);
 PinButton rightButton(Pins::SNAKE_RIGHT_BUTTON);
 PinButton snakeStartButton(Pins::SNAKE_RESET_BUTTON);
-CablePanel cables(Pins::CABLES, Pins::PLUGS);
-
 RemoteButton invadersStartButton;
-RemoteButton leftMic;
-RemoteButton rightMic;
-EitherButton shipLeft(leftMic, leftButton);
-EitherButton shipRight(rightMic, rightButton);
+CablePanel cables(Pins::CABLES, Pins::PLUGS);
+InputManager inputs;
 
 StatusLed snakeLed(Pins::STATUS_LED);
 RemoteLed invadersLed;
-
-BoardLink boardLink(Serial2, invadersStartButton, leftMic, rightMic, invadersLed);
-InputManager inputs;
 
 Screen snakeScreen(Panels::PANEL_WIDTH, Panels::SNAKE_PANELS * Panels::PANEL_HEIGHT, 0);
 Screen guideScreen(Panels::PANEL_WIDTH, Panels::PANEL_HEIGHT, Panels::GUIDE_PANEL);
@@ -45,13 +36,22 @@ BombCode code;
 SnakeEnigma snake(leftButton, rightButton, snakeScreen, code);
 CableEnigma cableEnigma(cables, snakeScreen, code);
 SnakeCablesEnigma snakeCables(snake, cableEnigma, code);
-InvadersEnigma invaders(shipLeft, shipRight, guideScreen, singerScreen);
+InvadersEnigma invaders(leftButton, rightButton, guideScreen, singerScreen);
 
 EnigmaStation snakeStation("Snake", snakeCables, snakeStartButton, snakeLed, snakeScreen);
 EnigmaStation invadersStation("Invaders", invaders, invadersStartButton, invadersLed, guideScreen);
 
+void ReadBoardB() {
+    while (Serial2.available() >= static_cast<int>(sizeof(InputMessage))) {
+        InputMessage message;
+        Serial2.readBytes(reinterpret_cast<uint8_t *>(&message), sizeof(message));
+        invadersStartButton.SetDown(message.resetBtn);
+    }
+}
+
 void setup() {
     Serial.begin(115200);
+    Serial2.begin(LinkTuning::BAUD, SERIAL_8N1, Pins::LINK_RX, Pins::LINK_TX);
     delay(2000);
 
     output.AddScreen(snakeScreen);
@@ -68,11 +68,8 @@ void setup() {
     inputs.Add(leftButton);
     inputs.Add(rightButton);
     inputs.Add(snakeStartButton);
-    inputs.Add(cables);
-    inputs.Add(boardLink);
     inputs.Add(invadersStartButton);
-    inputs.Add(leftMic);
-    inputs.Add(rightMic);
+    inputs.Add(cables);
     inputs.Begin();
 
     snakeStation.Begin(millis());
@@ -82,10 +79,10 @@ void setup() {
 void loop() {
     const uint32_t now = millis();
 
+    ReadBoardB();
     inputs.Update(now);
     snakeStation.Update(now);
     invadersStation.Update(now);
-    boardLink.SetSoundHz(invadersStation.IsPlaying() ? invaders.GetSoundHz(now) : 0);
 
     snakeScreen.fillScreen(Palette::BLACK);
     guideScreen.fillScreen(Palette::BLACK);
@@ -93,16 +90,4 @@ void loop() {
     snakeStation.Draw(now);
     invadersStation.Draw(now);
     output.Show();
-
-    // Get inputs from ESP32 - Board B
-    if (Serial2.available() >= sizeof(InputMessage))
-    {
-        InputMessage msg;
-
-        size_t received = Serial2.readBytes(reinterpret_cast<uint8_t*>(&msg), sizeof(msg));
-
-        if (received == sizeof(msg)) {
-            Serial.printf("Reset Button: %u\n", msg.resetBtn);
-        }
-    }
 }
