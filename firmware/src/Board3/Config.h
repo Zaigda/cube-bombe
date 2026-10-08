@@ -1,11 +1,10 @@
 #pragma once
 #include <cstdint>
-#include "Common/LightInputMessage.h"
+#include "Common/Messages/Enigma3Message.h"
 
-// Each sensor value is the average of SAMPLES reads; the status LED blinks every BLINK_MS.
+// Each sensor value is the average of SAMPLES reads.
 namespace LightTuning {
     constexpr int SAMPLES = 4;
-    constexpr uint32_t BLINK_MS = 400;
 }
 
 // GPIO numbers of board 3. Grid order: left to right, top to bottom (0 1 2 / 3 4 5 / 6 7 8).

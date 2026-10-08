@@ -1,11 +1,11 @@
 #include <Arduino.h>
 #include "Config.h"
-#include "Common/LightInputMessage.h"
-#include "Common/LightOutputMessage.h"
-#include "Common/MessageLink.h"
+#include "Common/Config.h"
+#include "Common/Messages/Enigma3Message.h"
+#include "Common/Messages/MessageLink.h"
 
-MessageReader<LightOutputMessage> boardAReader;
-LightOutputMessage boardA = {};
+MessageReader<Enigma3OutputMessage> boardAReader;
+Enigma3OutputMessage boardA = {};
 uint32_t lastBoardAMs = 0;
 uint32_t lastSendMs = 0;
 
@@ -18,7 +18,7 @@ uint16_t ReadLight(uint8_t pin) {
 }
 
 void SendSensors() {
-    LightInputMessage message = {};
+    Enigma3InputMessage message = {};
     message.resetBtn = digitalRead(Pins::START_BUTTON) == LOW;
     for (uint8_t i = 0; i < LIGHT_SENSOR_COUNT; i++) {
         message.light[i] = ReadLight(Pins::LIGHT_SENSORS[i]);
@@ -33,7 +33,7 @@ void ShowLeds(uint32_t now) {
     for (uint8_t i = 0; i < LIGHT_SENSOR_COUNT; i++) {
         digitalWrite(Pins::GRID_LEDS[i], (boardA.ledMask >> i) & 1 ? HIGH : LOW);
     }
-    const bool blinkOn = (now / LightTuning::BLINK_MS) % 2 == 0;
+    const bool blinkOn = (now / StatusLight::BLINK_MS) % 2 == 0;
     const bool statusOn = boardA.ledState == 2 || (boardA.ledState == 1 && blinkOn);
     digitalWrite(Pins::STATUS_LED, statusOn ? HIGH : LOW);
 }
