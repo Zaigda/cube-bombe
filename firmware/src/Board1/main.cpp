@@ -5,9 +5,9 @@
 #include "Board1/Enigma/CableEnigma.h"
 #include "Board1/Enigma/EnigmaStation.h"
 #include "Board1/Enigma/InvadersEnigma.h"
-#include "Board1/Enigma/LightEnigma.h"
 #include "Board1/Enigma/SnakeCablesEnigma.h"
 #include "Board1/Enigma/SnakeEnigma.h"
+#include "Board1/Enigma/LightEnigma.h"
 #include "Board1/Outputs/PanelOutput.h"
 #include "Common/Inputs/CablePanel.h"
 #include "Common/Inputs/InputManager.h"
@@ -17,6 +17,7 @@
 #include "Common/Outputs/Screen.h"
 #include "Common/Outputs/StatusLed.h"
 #include "Common/Messages/Enigma2Message.h"
+#include "Common/Messages/Enigma3Message.h"
 #include "Common/Messages/MessageLink.h"
 #include "Common/Config.h"
 
@@ -45,8 +46,8 @@ CableEnigma cableEnigma(cables, snakeScreen, code);
 SnakeCablesEnigma snakeCables(snake, cableEnigma, code);
 InvadersEnigma invaders(shipLeftButton, shipRightButton, guideScreen, singerScreen);
 
-MessageReader<LightInputMessage> boardCReader;
-LightInputMessage boardC = {};
+MessageReader<Enigma3InputMessage> boardCReader;
+Enigma3InputMessage boardC = {};
 uint32_t lastBoardCMs = 0;
 LightEnigma light(boardC);
 
@@ -94,7 +95,7 @@ void SendToBoards(uint32_t now) {
     MessageLink::Send(Serial2, message);
 
     const uint16_t ledMask = lightStation.IsPlaying() ? light.GetLedMask() : 0;
-    const LightOutputMessage lightMessage = {ledMask, static_cast<uint8_t>(lightLed.GetState())};
+    const Enigma3OutputMessage lightMessage = {ledMask, static_cast<uint8_t>(lightLed.GetState())};
     MessageLink::Send(Serial1, lightMessage);
 }
 

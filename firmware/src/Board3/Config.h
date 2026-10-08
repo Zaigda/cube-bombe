@@ -2,13 +2,6 @@
 #include <cstdint>
 #include "Common/LightInputMessage.h"
 
-// The serial link to board 1, and how often the sensors are sent.
-namespace LinkTuning {
-    constexpr uint32_t BAUD = 115200;
-    constexpr uint32_t SEND_MS = 50;
-    constexpr uint32_t TIMEOUT_MS = 500;
-}
-
 // Each sensor value is the average of SAMPLES reads; the status LED blinks every BLINK_MS.
 namespace LightTuning {
     constexpr int SAMPLES = 4;

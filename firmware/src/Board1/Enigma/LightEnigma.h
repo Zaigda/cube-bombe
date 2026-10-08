@@ -1,13 +1,13 @@
 #pragma once
 #include "Enigma.h"
 #include "Board1/Config.h"
-#include "Common/LightInputMessage.h"
+#include "Common/Messages/Enigma3Message.h"
 
 // Enigma 3: cover the 6 holes of a secret pattern. A covered hole of the pattern lights its LED on board 3;
 // with all 9 holes covered, every LED goes off. The light of each empty hole is measured on the first Update.
 class LightEnigma : public Enigma {
 public:
-    explicit LightEnigma(const LightInputMessage &lightSensors);
+    explicit LightEnigma(const Enigma3InputMessage &lightSensors);
 
     void Start(uint32_t now) override;
 
@@ -22,7 +22,7 @@ private:
 
     void PrintPattern() const;
 
-    const LightInputMessage &sensors;
+    const Enigma3InputMessage &sensors;
 
     uint16_t reference[LightTuning::HOLE_COUNT] = {};
     bool calibrated = false;

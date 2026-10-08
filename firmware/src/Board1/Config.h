@@ -75,13 +75,6 @@ namespace LightTuning {
     };
 }
 
-// The serial link between the boards: both boards use the same speed.
-namespace LinkTuning {
-    constexpr uint32_t BAUD = 115200;
-    constexpr uint32_t SEND_MS = 50;
-    constexpr uint32_t TIMEOUT_MS = 500;
-}
-
 // What every enigma station shows around its game: "RATE" duration and where "START" is written.
 namespace StationTuning {
     constexpr uint32_t FAIL_MS = 1000;

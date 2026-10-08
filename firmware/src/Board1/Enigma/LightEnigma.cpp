@@ -1,7 +1,7 @@
 #include "LightEnigma.h"
 #include <Arduino.h>
 
-LightEnigma::LightEnigma(const LightInputMessage &lightSensors)
+LightEnigma::LightEnigma(const Enigma3InputMessage &lightSensors)
     : sensors(lightSensors) {
 }
 
