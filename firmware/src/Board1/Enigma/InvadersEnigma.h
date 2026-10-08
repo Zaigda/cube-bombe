@@ -1,7 +1,7 @@
 #pragma once
 #include "Enigma.h"
-#include "Board1/Inputs/Button.h"
-#include "Board1/Outputs/Screen.h"
+#include "Common/Inputs/Button.h"
+#include "Common/Outputs/Screen.h"
 
 // A shot going up; y is its top LED.
 struct Bullet {

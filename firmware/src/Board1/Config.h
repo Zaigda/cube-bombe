@@ -47,22 +47,10 @@ namespace InvadersTuning {
     constexpr uint32_t REPLAY_MAX_MS = 5000;
 }
 
-// The serial link between the boards: both boards use the same speed.
-namespace LinkTuning {
-    constexpr uint32_t BAUD = 115200;
-    constexpr uint32_t SEND_MS = 50;
-    constexpr uint32_t TIMEOUT_MS = 500;
-}
-
 // What every enigma station shows around its game: "RATE" duration and where "START" is written.
 namespace StationTuning {
     constexpr uint32_t FAIL_MS = 1000;
     constexpr int16_t START_TEXT_TOP = 8;
-}
-
-// The status LED of the enigma.
-namespace StatusLight {
-    constexpr uint32_t BLINK_MS = 400;
 }
 
 // The chain of HUB75 panels. Panel 0 is the one plugged into the board.

@@ -1,8 +1,8 @@
 #pragma once
 #include "Enigma.h"
-#include "Board1/Inputs/Button.h"
-#include "Board1/Outputs/Screen.h"
-#include "Board1/Outputs/Led.h"
+#include "Common/Inputs/Button.h"
+#include "Common/Outputs/Screen.h"
+#include "Common/Outputs/Led.h"
 
 // The box around one enigma: its Start/Reset button, its status LED, and the screens shown around the game
 // (paused with "START", "RATE" after a mistake, "DESAMORCE" once solved).

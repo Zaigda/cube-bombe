@@ -8,6 +8,7 @@ namespace Pins {
     constexpr uint8_t INPUT_LEFT_MICRO_ANALOG = 13;
     constexpr uint8_t INPUT_RIGHT_MICRO_ANALOG = 14;
     constexpr uint8_t INPUT_RESET_BUTTON = 4;
+    constexpr uint8_t OUTPUT_GAME_STATE_LED = 12;
 }
 
 namespace SoundTuning {
