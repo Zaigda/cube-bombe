@@ -71,6 +71,10 @@ uint32_t GameManager::GetResetHoldMs(uint32_t now) const {
     return now - resetHoldStartMs;
 }
 
+uint32_t GameManager::GetRemainingMs(uint32_t now) const {
+    return countdown.GetRemainingMs(now);
+}
+
 void GameManager::UpdateResetHold(uint32_t now) {
     if (!resetButton.IsDown()) {
         resetHeld = false;

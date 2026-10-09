@@ -9,6 +9,11 @@ namespace LightTuning {
     constexpr int SAMPLES = 4;
 }
 
+// At startup, the grid LEDs light one at a time in grid order, SWEEP_STEP_MS each, to check the wiring.
+namespace GridTuning {
+    constexpr uint32_t SWEEP_STEP_MS = 150;
+}
+
 // GPIO numbers of board 3. Grid order: left to right, top to bottom (0 1 2 / 3 4 5 / 6 7 8).
 // Avoid 0 (BOOT button). The checks below refuse USB, flash, PSRAM and COM port pins.
 namespace Pins {

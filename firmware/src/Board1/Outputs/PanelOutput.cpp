@@ -36,6 +36,7 @@ bool PanelOutput::Begin() {
     };
     HUB75_I2S_CFG config(Panels::PANEL_WIDTH, Panels::PANEL_HEIGHT, panelCount, libraryPins);
     config.double_buff = true;
+    config.min_refresh_rate = Panels::MIN_REFRESH_HZ;
 
     panels = new MatrixPanel_I2S_DMA(config);
     if (!panels->begin()) {
@@ -49,23 +50,25 @@ bool PanelOutput::Begin() {
 }
 
 void PanelOutput::Show() {
-    if (panels == nullptr) {
-        return;
+    if (millis() - lastFrameMs >= Panels::FRAME_MS) {
+        SendFrame();
     }
-    const uint32_t now = millis();
-    if (now - lastFrameMs < Panels::FRAME_MS) {
-        return;
-    }
-    lastFrameMs = now;
+}
 
+void PanelOutput::ShowPanelNumbers() {
     for (uint8_t i = 0; i < screenCount; i++) {
-        const Screen &screen = *screens[i];
-        const uint8_t sliceCount = screen.height() / Panels::PANEL_HEIGHT;
-        for (uint8_t slice = 0; slice < sliceCount; slice++) {
-            DrawSlice(screen, slice);
+        Screen &screen = *screens[i];
+        screen.fillScreen(Palette::BLACK);
+        screen.setTextSize(Panels::TEST_TEXT_SIZE);
+        for (int16_t band = 0; band < screen.height(); band += Panels::PANEL_HEIGHT) {
+            char number[12];
+            snprintf(number, sizeof(number), "%d", screen.GetFirstPanel() + band / Panels::PANEL_HEIGHT);
+            screen.DrawCenteredOnPanel(number, Palette::WHITE, band);
+            screen.fillRect(0, band, Panels::TEST_SQUARE_SIZE, Panels::TEST_SQUARE_SIZE, Palette::WHITE);
         }
+        screen.setTextSize(1);
     }
-    panels->flipDMABuffer();
+    SendFrame();
 }
 
 const char *PanelOutput::GetError() const {
@@ -95,6 +98,21 @@ bool PanelOutput::CheckScreen(const Screen &screen, uint8_t index, bool panelUse
         panelUsed[panel] = true;
     }
     return true;
+}
+
+void PanelOutput::SendFrame() {
+    if (panels == nullptr) {
+        return;
+    }
+    lastFrameMs = millis();
+    for (uint8_t i = 0; i < screenCount; i++) {
+        const Screen &screen = *screens[i];
+        const uint8_t sliceCount = screen.height() / Panels::PANEL_HEIGHT;
+        for (uint8_t slice = 0; slice < sliceCount; slice++) {
+            DrawSlice(screen, slice);
+        }
+    }
+    panels->flipDMABuffer();
 }
 
 void PanelOutput::DrawSlice(const Screen &screen, uint8_t slice) {

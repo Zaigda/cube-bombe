@@ -5,7 +5,7 @@
 class MatrixPanel_I2S_DMA;
 
 // Shows Screens on the HUB75 panel chain: AddScreen() then Begin() in setup, then Show() every loop. Each panel-high
-// slice of a Screen goes to one panel, flipped if ROTATED_180.
+// slice of a Screen goes to one panel, flipped if ROTATED_180. ShowPanelNumbers() is the boot test of the chain.
 class PanelOutput {
 public:
     PanelOutput(const Pins::Hub75 &hub75Pins, uint8_t chainLength);
@@ -20,10 +20,14 @@ public:
 
     void Show();
 
+    void ShowPanelNumbers();
+
     const char *GetError() const;
 
 private:
     bool CheckScreen(const Screen &screen, uint8_t index, bool panelUsed[]);
+
+    void SendFrame();
 
     void DrawSlice(const Screen &screen, uint8_t slice);
 

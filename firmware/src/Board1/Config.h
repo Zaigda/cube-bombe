@@ -4,27 +4,34 @@
 #include "Board1/Core/Palette.h"
 #include "Common/Config.h"
 
-// The whole game: one timer for the 3 enigmas, started by the first Start, red under FINAL_WARNING_MS.
-// Holding the snake Start/Reset button GLOBAL_RESET_HOLD_MS resets everything ("RESET" shows after
+// The whole game: one timer for the 3 enigmas, started by the first Start, red under FINAL_WARNING_MS. Under
+// FINAL_ALARM_MS, the screens of the enigmas not in play (DEPART or DESAMORCE) get a red border FINAL_ALARM_BORDER
+// LEDs thick, blinking every FINAL_ALARM_BLINK_MS (keep a multiple of LinkTuning::SEND_MS); so do the 9 grid LEDs of
+// the light enigma. Holding the snake Start/Reset button GLOBAL_RESET_HOLD_MS resets everything ("RESET" shows after
 // RESET_FEEDBACK_AFTER_MS). "DEPART" pulses from PULSE_MIN_LEVEL to full white every PULSE_MS.
 namespace GameTuning {
     constexpr uint32_t GAME_DURATION_MS = 5 * 60 * 1000;
     constexpr uint32_t FINAL_WARNING_MS = 30 * 1000;
+    constexpr uint32_t FINAL_ALARM_MS = 10 * 1000;
+    constexpr uint32_t FINAL_ALARM_BLINK_MS = 250;
+    constexpr int16_t FINAL_ALARM_BORDER = 2;
     constexpr uint32_t GLOBAL_RESET_HOLD_MS = 8000;
     constexpr uint32_t RESET_FEEDBACK_AFTER_MS = 2000;
     constexpr uint32_t PULSE_MS = 2000;
     constexpr uint8_t PULSE_MIN_LEVEL = 120;
 
     static_assert(PULSE_MS >= 2, "PULSE_MS must be at least 2");
+    static_assert(FINAL_ALARM_BLINK_MS > 0, "FINAL_ALARM_BLINK_MS cannot be 0");
 }
 
 // The end of the game. BOOM loops on every screen: a white flash, rings growing from the middle (yellow, orange,
 // then red), then "BOOM" blinking. VICTOIRE plays once with the same timings: a green flash, rings (white, cyan,
-// then green), then "VICTOIRE" in VICTORY_TEXT_SIZE scrolling right to left on every panel, one LED every
-// VICTORY_SCROLL_STEP_MS, until the global reset. The grid of board 3 runs one LED along CHASE_ORDER (VICTOIRE) or
-// blinks every LED at StatusLight::FAST_BLINK_MS (BOOM). Grid order: 0 1 2 / 3 4 5 / 6 7 8. Keep CHASE_STEP_MS a
-// multiple of LinkTuning::SEND_MS, or the chase stutters. The RESET bar (global reset held) is in LEDs; it turns
-// green with "PRET" once the reset is done, until the button is released.
+// then green), then "VICTOIRE" in VICTORY_TEXT_SIZE crossing every panel once from right to left, one LED every
+// VICTORY_SCROLL_STEP_MS. Then every panel stays on "VICTOIRE" in green with the time that was left under it in
+// VICTORY_TIME_COLOR, placed like "DEPART" and its timer, until the global reset. The grid of board 3 runs one LED
+// along CHASE_ORDER (VICTOIRE) or blinks every LED at StatusLight::FAST_BLINK_MS (BOOM). Grid order: 0 1 2 / 3 4 5 /
+// 6 7 8. Keep CHASE_STEP_MS a multiple of LinkTuning::SEND_MS, or the chase stutters. The RESET bar (global reset
+// held) is in LEDs; it turns green with "PRET" once the reset is done, until the button is released.
 namespace EndTuning {
     constexpr uint32_t BOOM_FLASH_MS = 150;
     constexpr uint32_t BOOM_RINGS_MS = 1200;
@@ -35,6 +42,7 @@ namespace EndTuning {
     constexpr uint8_t BOOM_TEXT_SIZE = 2;
     constexpr uint8_t VICTORY_TEXT_SIZE = 3;
     constexpr uint32_t VICTORY_SCROLL_STEP_MS = 20;
+    constexpr uint16_t VICTORY_TIME_COLOR = Palette::WHITE;
     constexpr int RESET_BAR_MARGIN = 4;
     constexpr int RESET_BAR_HEIGHT = 6;
     constexpr uint32_t CHASE_STEP_MS = 150;
@@ -144,14 +152,17 @@ namespace StationTuning {
     constexpr uint8_t FAILED_TEXT_SIZE = 2;
     constexpr uint32_t SOLVED_FLASH_MS = 400;
     constexpr int16_t START_TEXT_TOP = 4;
-    constexpr int16_t TIMER_TEXT_TOP = 15;
+    constexpr int16_t TIMER_TEXT_TOP = 14;
     constexpr uint8_t TIMER_TEXT_SIZE = 2;
     constexpr uint16_t TIMER_COLOR = Palette::CYAN;
     constexpr int16_t LINK_CHECK_TOP = 36;
     constexpr int16_t LINK_CHECK_LINE = 10;
 }
 
-// The chain of HUB75 panels. Panel 0 is the one plugged into the board.
+// The chain of HUB75 panels. Panel 0 is the one plugged into the board. MIN_REFRESH_HZ is the library default:
+// raise it (e.g. 200) to reduce flicker on camera, at the cost of color depth. At boot, each panel shows its number
+// in TEST_TEXT_SIZE and a white square of TEST_SQUARE_SIZE LEDs in its top-left corner, to check the chain order
+// and ROTATED_180.
 namespace Panels {
     constexpr uint16_t PANEL_WIDTH = 64;
     constexpr uint16_t PANEL_HEIGHT = 32;
@@ -161,8 +172,11 @@ namespace Panels {
     constexpr uint8_t SINGER_PANEL = 3;
     constexpr uint8_t MAX_PANELS = 4;
     constexpr uint8_t BRIGHTNESS = 60;
+    constexpr uint8_t MIN_REFRESH_HZ = 60;
     constexpr uint32_t FRAME_MS = 20;
     constexpr bool ROTATED_180[MAX_PANELS] = {false, true, false, true};
+    constexpr uint8_t TEST_TEXT_SIZE = 3;
+    constexpr int16_t TEST_SQUARE_SIZE = 4;
 
     static_assert(PANEL_COUNT >= 1 && PANEL_COUNT <= MAX_PANELS, "PANEL_COUNT must be between 1 and MAX_PANELS");
     static_assert(SNAKE_PANELS >= 1 && SNAKE_PANELS <= PANEL_COUNT, "SNAKE_PANELS must be between 1 and PANEL_COUNT");

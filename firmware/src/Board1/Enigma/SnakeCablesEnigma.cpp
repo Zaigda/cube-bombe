@@ -6,7 +6,9 @@ SnakeCablesEnigma::SnakeCablesEnigma(SnakeEnigma &snakePart, CableEnigma &cables
 }
 
 void SnakeCablesEnigma::Start(uint32_t now) {
-    code.Shuffle();
+    do {
+        code.Shuffle();
+    } while (cables.IsSolved());
     snake.Start(now);
     snakeDone = false;
 }

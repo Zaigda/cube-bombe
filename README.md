@@ -33,18 +33,19 @@ Boards 2 and 3 have no game rules. Every 50 ms they send what they read to board
   off. Solved when exactly the pattern is covered (solved: all 9 LEDs on). No screen and no "RATE": only the grid and
   the status LED.
 
-1. **Waiting.** At power-on, the snake and invaders screens show "DEPART" pulsing slowly, with the bomb timer under it
-   (5:00, still). All status LEDs are off.
+1. **Waiting.** At power-on (after a 2 s self-test, see "Before each game"), the snake and invaders screens show
+   "DEPART" pulsing slowly, with the bomb timer under it (5:00, still). All status LEDs are off.
 2. **Start.** Each enigma has a Start/Reset button. A press starts it: its game replaces "DEPART", its LED blinks. **The
    first Start of any enigma starts the timer.** The timer only shows under "DEPART" (enigmas not started yet); it turns
-   red for the last 30 s.
+   red for the last 30 s. In the last 10 s, the screens of the enigmas not in play ("DEPART" or "DESAMORCE") blink a
+   red border, and the 9 grid LEDs blink together if the light enigma is not in play.
 3. **Reset one enigma.** A press during play (or during "RATE") restarts that enigma from zero: back to "DEPART", LED
    off. The timer keeps running. A second press starts it again.
 4. **Mistake.** "RATE" in big white letters on red for 1 s, then play goes on.
 5. **Solved.** A green flash, then "DESAMORCE" in green; LED steady on. Its button does nothing any more.
 6. **All 3 solved: VICTOIRE.** On every panel, once: a green flash, rings growing (white, cyan, green), then "VICTOIRE"
-   scrolling in big green letters (on each panel) until the global reset. Every status LED on, one LED running round
-   the grid.
+   crossing each panel once in big green letters. Then every panel stays on "VICTOIRE" in green with the time that was
+   left under it, until the global reset. Every status LED on, one LED running round the grid.
 7. **Timer at 0: BOOM.** On every panel, in a loop: a white flash, rings growing (yellow, orange, red), then "BOOM"
    blinking red. Every status LED and the whole grid blink fast.
 8. **Frozen.** After VICTOIRE or BOOM, every enigma button is ignored until the global reset.
@@ -52,7 +53,8 @@ Boards 2 and 3 have no game rules. Every 50 ms they send what they read to board
    bar filling up to 8 s; letting go earlier cancels it. At 8 s the bar turns green with "PRET": let go. Everything
    goes back to step 1: timer full and stopped, new cable code, new light pattern. It works at any moment. A short
    press (under 2 s) of this button still starts or resets the snake; it counts when the button is released ("DEPART"
-   turns green while the button is held). **Backup:** the RST button of board 1 restarts the game too.
+   turns green while the button is held). **Backup:** the RST button of board 1 restarts the game too (after its
+   self-test).
 
 ## Change the game
 
@@ -65,13 +67,14 @@ column.
 |---|---|---|---|---|
 | Change the game length | `Board1/Config.h` | `GameTuning::GAME_DURATION_MS` | 5 min | `board-a` |
 | Change when the timer turns red | `Board1/Config.h` | `GameTuning::FINAL_WARNING_MS` | 30 s | `board-a` |
+| Change the last-seconds alarm (red border, grid blinking) | `Board1/Config.h` | `GameTuning::FINAL_ALARM_MS` (when it starts), `FINAL_ALARM_BLINK_MS` (keep a multiple of 50), `FINAL_ALARM_BORDER` (border thickness) | 10 s, `250`, `2` | `board-a` |
 | Change the global reset | `Board1/Config.h` | `GameTuning::GLOBAL_RESET_HOLD_MS` (hold time), `RESET_FEEDBACK_AFTER_MS` (when "RESET" shows; also the longest short press of the snake button) | `8000`, `2000` | `board-a` |
 | Change the "DEPART" pulse | `Board1/Config.h` | `GameTuning::PULSE_MS` (one cycle, also the blink of the grid LED before the light Start), `PULSE_MIN_LEVEL` (darkest, 0-255) | `2000`, `120` | `board-a` |
 | Change a text | `Board1/Config.h` | `Texts::START`, `FAILED`, `SOLVED`, `PLUG`, `VICTORY`, `BOOM`, `RESET`, `RESET_DONE`, `BOARD_2`, `BOARD_3`: uppercase, no accents (the font has none), 10 characters at most | "DEPART", "RATE", ... | `board-a` |
 | Change "RATE" or the solved flash | `Board1/Config.h` | `StationTuning::FAIL_MS` (how long "RATE" stays), `FAILED_TEXT_SIZE`, `SOLVED_FLASH_MS` (green screen before "DESAMORCE") | `1000`, `2`, `400` | `board-a` |
-| Move "DEPART", the timer or the board warning | `Board1/Config.h` | `StationTuning::START_TEXT_TOP`, `TIMER_TEXT_TOP`, `TIMER_TEXT_SIZE`, `TIMER_COLOR`, `LINK_CHECK_TOP` ("CARTE 2"), `LINK_CHECK_LINE` (gap to "CARTE 3") | `4`, `15`, `2`, cyan, `36`, `10` | `board-a` |
+| Move "DEPART", the timer or the board warning | `Board1/Config.h` | `StationTuning::START_TEXT_TOP`, `TIMER_TEXT_TOP`, `TIMER_TEXT_SIZE` (the final "VICTOIRE" and time left use the same 3), `TIMER_COLOR`, `LINK_CHECK_TOP` ("CARTE 2"), `LINK_CHECK_LINE` (gap to "CARTE 3") | `4`, `14`, `2`, cyan, `36`, `10` | `board-a` |
 | Change the BOOM animation (VICTOIRE uses the same flash and ring values) | `Board1/Config.h` | `EndTuning::BOOM_FLASH_MS`, `BOOM_RINGS_MS`, `BOOM_RING_COUNT`, `BOOM_RING_GAP`, `BOOM_TEXT_MS`, `BOOM_BLINK_MS`, `BOOM_TEXT_SIZE` | `150`, `1200`, `3`, `6`, `2400`, `300`, `2` | `board-a` |
-| Change the VICTOIRE text | `Board1/Config.h` | `EndTuning::VICTORY_TEXT_SIZE`, `VICTORY_SCROLL_STEP_MS` (time per LED of scrolling) | `3`, `20` | `board-a` |
+| Change the VICTOIRE text | `Board1/Config.h` | `EndTuning::VICTORY_TEXT_SIZE`, `VICTORY_SCROLL_STEP_MS` (time per LED of scrolling), `VICTORY_TIME_COLOR` (the time left, shown after) | `3`, `20`, white | `board-a` |
 | Change the VICTOIRE grid chase | `Board1/Config.h` | `EndTuning::CHASE_STEP_MS` (keep a multiple of 50), `CHASE_ORDER` (grid order 0 1 2 / 3 4 5 / 6 7 8) | `150`, round the edge | `board-a` |
 | Make the snake faster or slower | `Board1/Config.h` | `SnakeTuning::STEP_MS`. LEDs per second = `CELL_SIZE * 1000 / STEP_MS` | `250` (8 LEDs/s) | `board-a` |
 | Change the snake cells | `Board1/Config.h` | `SnakeTuning::CELL_SIZE` (a value that divides 32) | `2` | `board-a` |
@@ -80,7 +83,7 @@ column.
 | Change where the first apple appears | `Board1/Config.h` | `SnakeTuning::FIRST_APPLE_MIN_X` ... `FIRST_APPLE_MAX_Y` | x 32-48, y 16-32 | `board-a` |
 | Change the "eating" head | `Board1/Config.h` | `SnakeTuning::MOUTH_SIZE`, `MOUTH_MS` | `4`, `250` | `board-a` |
 | Change how many turn presses wait | `Board1/Config.h` | `SnakeTuning::TURN_QUEUE_SIZE` | `2` | `board-a` |
-| Change cable or plug colors, or the solutions | `Board1/Core/BombCode.cpp` | `CABLE_COLORS`, `PLUG_COLORS`, `SOLUTIONS` (plug of cable 0, 1, 2) | 3 solutions | `board-a` |
+| Change cable or plug colors, or the solutions | `Board1/Core/BombCode.cpp` | `CABLE_COLORS`, `PLUG_COLORS`, `SOLUTIONS` (plug of cable 0, 1, 2; at least 2 rows, all different, with `SOLUTION_COUNT`) | 3 solutions | `board-a` |
 | Change Space Invaders speeds | `Board1/Config.h` | `InvadersTuning::ALIEN_STEP_MS` (alien fall), `SHIP_STEP_MS`, `FIRE_MS`, `BULLET_STEP_MS` | `500`, `40`, `500`, `20` | `board-a` |
 | Change the kills to win | `Board1/Config.h` | `InvadersTuning::ALIEN_COUNT` | `20` | `board-a` |
 | Change the kill counter | `Board1/Config.h` | `InvadersTuning::COUNTER_LEFT`, `COUNTER_TOP`, `COUNTER_LEVEL` (gray, 0-255), `HIT_FLASH_MS` (after a hit: counter white, hit alien orange) | `1`, `1`, `180`, `300` | `board-a` |
@@ -88,13 +91,16 @@ column.
 | Change the light patterns | `Board1/Config.h` | `LightTuning::PATTERNS` (1 = hole to cover); a new pattern also raises `PATTERN_COUNT` | 6 patterns | `board-a` |
 | Change the grid LED blinking before the light Start | `Board1/Config.h` | `LightTuning::IDLE_LED` (grid order 0 1 2 / 3 4 5 / 6 7 8) | `4` (middle) | `board-a` |
 | Smooth the light sensors | `Board3/Config.h` | `LightTuning::SAMPLES` (reads averaged per value) | `4` | `board-c` |
+| Change the grid test at power-on | `Board3/Config.h` | `GridTuning::SWEEP_STEP_MS` (time per LED) | `150` | `board-c` |
 | Change the microphone sensitivity | `Board2/Config.h` | `SoundTuning::NOISE_RATIO`, `MIN_MARGIN`: lower = more sensitive | `2.0`, `15` | `board-b` |
 | Change the voice reaction time | `Board2/Config.h` | `SoundTuning::ATTACK_WINDOWS` (to move), `RELEASE_WINDOWS` (to stop), in steps of 50 ms | `2`, `5` | `board-b` |
 | Change when a long sound is ignored | `Board2/Config.h` | `SoundTuning::MAX_HOLD_MS`: after this, the sound is learned as background (2 s deaf) | `4000` | `board-b` |
 | Change the LED blinking | `Common/Config.h` | `StatusLight::BLINK_MS` (playing), `FAST_BLINK_MS` (BOOM) | `400`, `150` | all 3 |
 | Change the serial links | `Common/Config.h` | `LinkTuning::BAUD`, `SEND_MS`, `TIMEOUT_MS` | `115200`, `50`, `500` | all 3 |
 | Change the panel brightness | `Board1/Config.h` | `Panels::BRIGHTNESS` (0-255) | `60` | `board-a` |
-| Fix a panel shown upside down | `Board1/Config.h` | `Panels::ROTATED_180`: one value per panel, 0 to 3; swap the wrong one | `{false, true, false, true}` | `board-a` |
+| Reduce flicker on camera | `Board1/Config.h` | `Panels::MIN_REFRESH_HZ`: raise it (e.g. `200`); colors get fewer shades | `60` (library default) | `board-a` |
+| Fix a panel shown upside down | `Board1/Config.h` | `Panels::ROTATED_180`: one value per panel, 0 to 3; swap the wrong one (the self-test shows it) | `{false, true, false, true}` | `board-a` |
+| Change the panel test at power-on | `Board1/Config.h` | `Panels::TEST_TEXT_SIZE` (panel number), `TEST_SQUARE_SIZE` (top-left square) | `3`, `4` | `board-a` |
 | Swap the guide and singer panels | `Board1/Config.h` | `Panels::GUIDE_PANEL`, `SINGER_PANEL` | `2`, `3` | `board-a` |
 | Fix double or missed button presses | `Common/Inputs/PinButton.h` | `DEBOUNCE_MS` (board 1 buttons) | `30` | `board-a` |
 | Add a color | `Board1/Core/Palette.h` | Add `constexpr uint16_t MAGENTA = Rgb(255, 0, 255);`, use `Palette::MAGENTA`; prefer channels at 0 or 255 (the panel darkens middle values), check it on the panel | | `board-a` |
@@ -214,7 +220,7 @@ libraries (a few minutes). Close the monitor before an upload. Upload stuck: hol
 | Monitor line | Meaning |
 |---|---|
 | `Bomb cube - board 1` / `ESP32 - Board B - Initialized.` / `Bomb cube - board 3 (light sensors)` | Which program the board runs |
-| `Panels failed to start: ...` | Board 1: the panels did not start; the end says why |
+| `Panels failed to start: ...` | Board 1: the panels did not start (the snake status LED blinks fast); the end says why |
 | `Game: waiting`, `running`, `defused`, `exploded`, `global reset` | The game changed state |
 | `Snake: start`, `reset`, `mistake`, `solved!` (same for `Invaders`, `Light`) | A station changed state |
 | `Code: levels ..., plugs ...` / `Snake done: plug the cables` / `Cable 0 -> plug 2` | Enigma 1: new secret, cables step, a cable moved (`-1` = unplugged) |
@@ -223,12 +229,19 @@ libraries (a few minutes). Close the monitor before an upload. Upload stuck: hol
 
 ## Before each game (staff)
 
-1. **Unplug the 3 cables.** Otherwise the cables left from the last game may already match the new code, and enigma 1
-   solves itself right after the snake.
+1. The cables can stay where the last group left them: a new code (at power-on, RST or reset) never matches the cables
+   plugged at that moment.
 2. The light holes can stay as they are: a hole covered at Start counts as open until it has seen light once.
 3. Hold the snake Start/Reset 8 s (or press RST on board 1). Check: "DEPART" and 5:00 on panels 0, 2 and 3, the middle
    grid LED blinks, status LEDs off, and nothing red on panel 1 (CARTE 2 / CARTE 3 = that board is silent: wire, GND or
    upload).
+
+   **Self-tests at power-on** (or after the RST of that board): for 2 s, each panel shows its number big (0 and 1 = top
+   and bottom of the snake, 2 = guide, 3 = singer) with a small white square in its top-left corner. A wrong number =
+   the ribbons are in the wrong order; the square bottom-right (the number upside down) = that panel's `ROTATED_180` is
+   wrong; a black panel = its ribbon or its 5 V. If the snake status LED blinks fast instead, the panels did not start
+   (monitor: `Panels failed to start`). Board 3 lights its 9 grid LEDs one at a time, 0 to 8 (top-left to bottom-right,
+   row by row): an LED out of order = two LED wires swapped; one that stays dark = that LED or its wire.
 4. Board 2 learns the room's noise in its first 2 s after power-on: no shouting near the microphones then.
 5. If the 5-minute music plays next to the cube, start it on the players' first Start.
 

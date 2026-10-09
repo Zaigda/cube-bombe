@@ -36,6 +36,14 @@ void ShowLeds(uint32_t now) {
     statusLed.Update(now);
 }
 
+void SweepGridLeds() {
+    for (uint8_t pin : Pins::GRID_LEDS) {
+        digitalWrite(pin, HIGH);
+        delay(GridTuning::SWEEP_STEP_MS);
+        digitalWrite(pin, LOW);
+    }
+}
+
 void setup() {
     Serial.begin(115200);
     Serial2.begin(LinkTuning::BAUD, SERIAL_8N1, Pins::LINK_RX, Pins::LINK_TX);
@@ -47,6 +55,7 @@ void setup() {
     for (uint8_t pin : Pins::GRID_LEDS) {
         pinMode(pin, OUTPUT);
     }
+    SweepGridLeds();
     Serial.println("Bomb cube - board 3 (light sensors)");
 }
 

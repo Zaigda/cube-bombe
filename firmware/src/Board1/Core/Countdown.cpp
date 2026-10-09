@@ -29,3 +29,7 @@ uint32_t Countdown::GetRemainingMs(uint32_t now) const {
 bool Countdown::IsExpired(uint32_t now) const {
     return running && GetRemainingMs(now) == 0;
 }
+
+bool Countdown::IsRunning() const {
+    return running;
+}

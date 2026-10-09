@@ -26,6 +26,8 @@ public:
 
     uint32_t GetResetHoldMs(uint32_t now) const;
 
+    uint32_t GetRemainingMs(uint32_t now) const;
+
 private:
     void UpdateResetHold(uint32_t now);
 

@@ -9,6 +9,8 @@ static const uint16_t PLUG_COLORS[BombCode::CABLE_COUNT] = {Palette::GREEN, Pale
 
 static constexpr int SOLUTION_COUNT = 3;
 
+static_assert(SOLUTION_COUNT >= 2, "the new code must be able to differ from the plugged cables");
+
 static const int SOLUTIONS[SOLUTION_COUNT][BombCode::CABLE_COUNT] = {
     {0, 1, 2},
     {1, 2, 0},

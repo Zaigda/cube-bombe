@@ -1,6 +1,5 @@
 #include "EnigmaStation.h"
 #include <Arduino.h>
-#include <cstdio>
 #include "Board1/Config.h"
 #include "Board1/Core/Palette.h"
 
@@ -71,6 +70,15 @@ LedState EnigmaStation::GetLedState() const {
     return ledState;
 }
 
+bool EnigmaStation::IsInFinalAlarm(uint32_t now) const {
+    const bool notInPlay = phase == Phase::Paused || phase == Phase::Solved;
+    return notInPlay && timer.IsRunning() && timer.GetRemainingMs(now) <= GameTuning::FINAL_ALARM_MS;
+}
+
+bool EnigmaStation::IsFinalAlarmLit(uint32_t now) {
+    return (now / GameTuning::FINAL_ALARM_BLINK_MS) % 2 == 0;
+}
+
 void EnigmaStation::ReadStartButton(uint32_t now) {
     if (!start.WasPressed() || phase == Phase::Solved) {
         return;
@@ -127,16 +135,22 @@ void EnigmaStation::DrawTexts(Screen &screen, uint32_t now) const {
             }
             break;
     }
+    DrawFinalAlarm(screen, now);
 }
 
 void EnigmaStation::DrawTimer(Screen &screen, uint32_t now) const {
     const uint32_t remainingMs = timer.GetRemainingMs(now);
-    const unsigned totalSeconds = (remainingMs + 999) / 1000;
-    char text[12];
-    snprintf(text, sizeof(text), "%u:%02u", totalSeconds / 60, totalSeconds % 60);
-
     const uint16_t color = remainingMs < GameTuning::FINAL_WARNING_MS ? Palette::RED : StationTuning::TIMER_COLOR;
     screen.setTextSize(StationTuning::TIMER_TEXT_SIZE);
-    screen.DrawCenteredText(text, color, StationTuning::TIMER_TEXT_TOP);
+    screen.DrawCenteredTime(remainingMs, color, StationTuning::TIMER_TEXT_TOP);
     screen.setTextSize(1);
+}
+
+void EnigmaStation::DrawFinalAlarm(Screen &screen, uint32_t now) const {
+    if (!IsInFinalAlarm(now) || !IsFinalAlarmLit(now)) {
+        return;
+    }
+    for (int16_t i = 0; i < GameTuning::FINAL_ALARM_BORDER; i++) {
+        screen.drawRect(i, i, screen.width() - 2 * i, screen.height() - 2 * i, Palette::RED);
+    }
 }

@@ -25,6 +25,7 @@
 #include "Common/Config.h"
 
 constexpr uint16_t ALL_GRID_LEDS = 0b111111111;
+constexpr uint32_t PANEL_ERROR_PRINT_MS = 1000;
 
 PinButton leftButton(Pins::SNAKE_LEFT_BUTTON);
 PinButton rightButton(Pins::SNAKE_RIGHT_BUTTON);
@@ -84,6 +85,9 @@ uint16_t GetGridMask(uint32_t now) {
     if (game.GetState() == GameState::Exploded) {
         return StatusLed::IsLit(LedState::FastBlinking, now) ? ALL_GRID_LEDS : 0;
     }
+    if (lightStation.IsInFinalAlarm(now)) {
+        return EnigmaStation::IsFinalAlarmLit(now) ? ALL_GRID_LEDS : 0;
+    }
     if (lightStation.IsSolved()) {
         return ALL_GRID_LEDS;
     }
@@ -134,22 +138,37 @@ void DrawScreens(uint32_t now) {
     output.Show();
 }
 
+void ReportPanelError() {
+    snakeLed.Set(LedState::FastBlinking);
+    uint32_t lastPrintMs = millis() - PANEL_ERROR_PRINT_MS;
+    while (true) {
+        const uint32_t now = millis();
+        if (now - lastPrintMs >= PANEL_ERROR_PRINT_MS) {
+            lastPrintMs = now;
+            Serial.printf("Panels failed to start: %s\n", output.GetError());
+        }
+        snakeLed.Update(now);
+        delay(10);
+    }
+}
+
 void setup() {
     Serial.begin(115200);
+    snakeLed.Begin();
     output.AddScreen(snakeScreen);
     output.AddScreen(guideScreen);
     output.AddScreen(singerScreen);
     const bool outputStarted = output.Begin();
+    if (outputStarted) {
+        output.ShowPanelNumbers();
+    }
 
     Serial2.begin(LinkTuning::BAUD, SERIAL_8N1, Pins::LINK_RX, Pins::LINK_TX);
     Serial1.begin(LinkTuning::BAUD, SERIAL_8N1, Pins::LIGHT_LINK_RX, Pins::LIGHT_LINK_TX);
     delay(2000);
 
     if (!outputStarted) {
-        while (true) {
-            Serial.printf("Panels failed to start: %s\n", output.GetError());
-            delay(1000);
-        }
+        ReportPanelError();
     }
     Serial.println("Bomb cube - board 1");
 
@@ -162,7 +181,6 @@ void setup() {
     inputs.Add(lightStartButton);
     inputs.Add(cables);
     inputs.Begin();
-    snakeLed.Begin();
 
     snakeStation.AddScreen(snakeScreen);
     invadersStation.AddScreen(guideScreen);

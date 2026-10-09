@@ -3,6 +3,7 @@
 
 // An image in RAM that enigmas draw on with Adafruit GFX. It covers whole panels, from its first panel.
 // DrawCenteredText() without a top writes the text once per panel, so that no text sits across two panels.
+// DrawCenteredTime() writes a time as m:ss, rounded up to the second.
 class Screen : public GFXcanvas16 {
 public:
     Screen(uint16_t width, uint16_t height, uint8_t panelIndex);
@@ -18,6 +19,10 @@ public:
     void DrawCenteredText(const char *text, uint16_t color);
 
     void DrawCenteredText(const char *text, uint16_t color, int16_t top);
+
+    void DrawCenteredOnPanel(const char *text, uint16_t color, int16_t panelTop);
+
+    void DrawCenteredTime(uint32_t ms, uint16_t color, int16_t top);
 
 private:
     uint8_t firstPanel;

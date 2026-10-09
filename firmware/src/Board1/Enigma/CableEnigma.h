@@ -15,6 +15,8 @@ public:
 
     void Draw(uint32_t now) override;
 
+    bool IsSolved() const;
+
 private:
     const CablePanel &cables;
     Screen &screen;

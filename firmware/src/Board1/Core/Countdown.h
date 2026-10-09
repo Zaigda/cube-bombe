@@ -14,6 +14,8 @@ public:
 
     bool IsExpired(uint32_t now) const;
 
+    bool IsRunning() const;
+
 private:
     uint32_t startMs = 0;
     uint32_t durationMs = 0;

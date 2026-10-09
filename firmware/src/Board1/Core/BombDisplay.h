@@ -2,8 +2,9 @@
 #include "GameManager.h"
 #include "Board1/Outputs/Screen.h"
 
-// Draws what belongs to the whole bomb, over the enigmas: the VICTOIRE or BOOM animation on every screen once the
-// game is over, and "RESET" with a progress bar on one screen while the global reset button is held.
+// Draws what belongs to the whole bomb, over the enigmas: the VICTOIRE (then the time left) or BOOM animation on
+// every screen once the game is over, and "RESET" with a progress bar on one screen while the global reset button is
+// held.
 class BombDisplay {
 public:
     BombDisplay(const GameManager &gameManager, Screen &resetHoldScreen);
@@ -13,11 +14,13 @@ public:
     void Draw(uint32_t now);
 
 private:
-    void DrawEnd(Screen &screen, uint32_t endMs) const;
+    void DrawEnd(Screen &screen, uint32_t now) const;
 
-    void DrawVictory(Screen &screen, uint32_t endMs) const;
+    void DrawVictory(Screen &screen, uint32_t endMs, uint32_t remainingMs) const;
 
-    void DrawScrollingVictory(Screen &screen, uint32_t scrollMs) const;
+    bool DrawScrollingVictory(Screen &screen, uint32_t scrollMs) const;
+
+    void DrawVictoryTime(Screen &screen, uint32_t remainingMs) const;
 
     void DrawBoom(Screen &screen, uint32_t boomMs) const;
 

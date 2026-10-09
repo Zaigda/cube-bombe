@@ -2,7 +2,8 @@
 #include "Sensor.h"
 
 // The 3 cables and 3 plugs of enigma 1: one plug at a time goes LOW, and a cable (INPUT_PULLUP) that reads LOW
-// is in it. GetPlug() gives the plug of a cable, or UNPLUGGED. Prints one monitor line per change.
+// is in it. GetPlug() gives the plug of a cable, or UNPLUGGED, already right after Begin(). Prints one monitor line
+// per change.
 class CablePanel : public Sensor {
 public:
     static constexpr uint8_t COUNT = 3;

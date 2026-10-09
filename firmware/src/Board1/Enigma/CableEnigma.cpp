@@ -10,14 +10,18 @@ void CableEnigma::Start(uint32_t) {
 }
 
 EnigmaEvent CableEnigma::Update(uint32_t) {
-    for (uint8_t cable = 0; cable < BombCode::CABLE_COUNT; cable++) {
-        if (cables.GetPlug(cable) != code.GetPlug(cable)) {
-            return EnigmaEvent::None;
-        }
-    }
-    return EnigmaEvent::Solved;
+    return IsSolved() ? EnigmaEvent::Solved : EnigmaEvent::None;
 }
 
 void CableEnigma::Draw(uint32_t) {
     screen.DrawCenteredText(Texts::PLUG, Palette::WHITE);
+}
+
+bool CableEnigma::IsSolved() const {
+    for (uint8_t cable = 0; cable < BombCode::CABLE_COUNT; cable++) {
+        if (cables.GetPlug(cable) != code.GetPlug(cable)) {
+            return false;
+        }
+    }
+    return true;
 }

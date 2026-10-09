@@ -13,6 +13,10 @@ void CablePanel::Begin() {
         pinMode(cablePin[i], INPUT_PULLUP);
         pinMode(plugPin[i], INPUT);
     }
+    for (uint8_t cable = 0; cable < COUNT; cable++) {
+        plug[cable] = ReadPlug(cable);
+        lastReading[cable] = plug[cable];
+    }
 }
 
 void CablePanel::Update(uint32_t now) {

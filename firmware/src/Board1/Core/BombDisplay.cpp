@@ -36,9 +36,8 @@ void BombDisplay::AddScreen(Screen &screen) {
 
 void BombDisplay::Draw(uint32_t now) {
     if (game.IsOver()) {
-        const uint32_t endMs = game.GetTimeInStateMs(now);
         for (uint8_t i = 0; i < screenCount; i++) {
-            DrawEnd(*screens[i], endMs);
+            DrawEnd(*screens[i], now);
         }
     }
 
@@ -48,26 +47,30 @@ void BombDisplay::Draw(uint32_t now) {
     }
 }
 
-void BombDisplay::DrawEnd(Screen &screen, uint32_t endMs) const {
+void BombDisplay::DrawEnd(Screen &screen, uint32_t now) const {
+    const uint32_t endMs = game.GetTimeInStateMs(now);
     screen.fillScreen(Palette::BLACK);
     if (game.GetState() == GameState::Defused) {
-        DrawVictory(screen, endMs);
+        DrawVictory(screen, endMs, game.GetRemainingMs(now));
     } else {
         DrawBoom(screen, endMs);
     }
 }
 
-void BombDisplay::DrawVictory(Screen &screen, uint32_t endMs) const {
+void BombDisplay::DrawVictory(Screen &screen, uint32_t endMs, uint32_t remainingMs) const {
     if (endMs < RINGS_START_MS) {
         screen.fillScreen(Palette::GREEN);
     } else if (endMs < TEXT_START_MS) {
         DrawRings(screen, endMs - RINGS_START_MS, VICTORY_RING_COLORS);
     } else {
-        DrawScrollingVictory(screen, endMs - TEXT_START_MS);
+        const bool scrolling = DrawScrollingVictory(screen, endMs - TEXT_START_MS);
+        if (!scrolling) {
+            DrawVictoryTime(screen, remainingMs);
+        }
     }
 }
 
-void BombDisplay::DrawScrollingVictory(Screen &screen, uint32_t scrollMs) const {
+bool BombDisplay::DrawScrollingVictory(Screen &screen, uint32_t scrollMs) const {
     screen.setTextSize(EndTuning::VICTORY_TEXT_SIZE);
     screen.setTextWrap(false);
     int16_t x;
@@ -75,16 +78,29 @@ void BombDisplay::DrawScrollingVictory(Screen &screen, uint32_t scrollMs) const 
     uint16_t textWidth;
     uint16_t textHeight;
     screen.getTextBounds(Texts::VICTORY, 0, 0, &x, &y, &textWidth, &textHeight);
-    const uint32_t travel = screen.width() + textWidth;
-    const int left = screen.width() - static_cast<int>(scrollMs / EndTuning::VICTORY_SCROLL_STEP_MS % travel);
+    const uint32_t scrolledLeds = scrollMs / EndTuning::VICTORY_SCROLL_STEP_MS;
+    const bool scrolling = scrolledLeds < static_cast<uint32_t>(screen.width() + textWidth);
 
-    screen.setTextColor(Palette::GREEN);
-    for (int band = 0; band < screen.height(); band += Panels::PANEL_HEIGHT) {
-        screen.setCursor(left, band + (Panels::PANEL_HEIGHT - textHeight) / 2);
-        screen.print(Texts::VICTORY);
+    if (scrolling) {
+        const int left = screen.width() - static_cast<int>(scrolledLeds);
+        screen.setTextColor(Palette::GREEN);
+        for (int band = 0; band < screen.height(); band += Panels::PANEL_HEIGHT) {
+            screen.setCursor(left, band + (Panels::PANEL_HEIGHT - textHeight) / 2);
+            screen.print(Texts::VICTORY);
+        }
     }
     screen.setTextSize(1);
     screen.setTextWrap(true);
+    return scrolling;
+}
+
+void BombDisplay::DrawVictoryTime(Screen &screen, uint32_t remainingMs) const {
+    for (int16_t band = 0; band < screen.height(); band += Panels::PANEL_HEIGHT) {
+        screen.DrawCenteredText(Texts::VICTORY, Palette::GREEN, band + StationTuning::START_TEXT_TOP);
+        screen.setTextSize(StationTuning::TIMER_TEXT_SIZE);
+        screen.DrawCenteredTime(remainingMs, EndTuning::VICTORY_TIME_COLOR, band + StationTuning::TIMER_TEXT_TOP);
+        screen.setTextSize(1);
+    }
 }
 
 void BombDisplay::DrawBoom(Screen &screen, uint32_t boomMs) const {
