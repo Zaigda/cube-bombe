@@ -174,7 +174,7 @@ namespace Panels {
     constexpr uint8_t BRIGHTNESS = 60;
     constexpr uint8_t MIN_REFRESH_HZ = 60;
     constexpr uint32_t FRAME_MS = 20;
-    constexpr bool ROTATED_180[MAX_PANELS] = {false, true, false, true};
+    constexpr bool ROTATED_180[MAX_PANELS] = {false, false, false, true};
     constexpr uint8_t TEST_TEXT_SIZE = 3;
     constexpr int16_t TEST_SQUARE_SIZE = 4;
 

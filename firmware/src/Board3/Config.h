@@ -18,8 +18,8 @@ namespace GridTuning {
 // Avoid 0 (BOOT button). The checks below refuse USB, flash, PSRAM and COM port pins.
 namespace Pins {
     constexpr uint8_t LIGHT_SENSORS[LIGHT_SENSOR_COUNT] = {18, 16, 8, 5, 15, 6, 7, 4, 17};
-    constexpr uint8_t GRID_LEDS[LIGHT_SENSOR_COUNT] = {42, 2, 1, 41, 40, 47, 12, 11, 10};
-    constexpr uint8_t START_BUTTON = 39;
+    constexpr uint8_t GRID_LEDS[LIGHT_SENSOR_COUNT] = {42, 2, 1, 41, 40, 47,  38, 39, 45};
+    constexpr uint8_t START_BUTTON = 10;
     constexpr uint8_t STATUS_LED = 9;
     constexpr uint8_t LINK_TX = 21;
     constexpr uint8_t LINK_RX = 13;
