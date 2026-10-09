@@ -22,14 +22,9 @@ InvadersEnigma::InvadersEnigma(const Button &leftButton, const Button &rightButt
 void InvadersEnigma::Start(uint32_t now) {
     shipX = (guide.width() - InvadersTuning::SHIP_WIDTH) / 2;
     lastShipMoveMs = now;
-    for (Bullet &bullet : bullets) {
-        bullet.active = false;
-    }
     lastFireMs = now;
     lastBulletMoveMs = now;
-    aliensKilled = 0;
-    lives = InvadersTuning::START_LIVES;
-    alienWaiting = true;
+    RestartWave();
 }
 
 EnigmaEvent InvadersEnigma::Update(uint32_t now) {
@@ -41,10 +36,10 @@ EnigmaEvent InvadersEnigma::Update(uint32_t now) {
     MoveBullets(now);
     MoveAlien(now);
     CheckHits(now);
-    ReplayNote(now);
 
-    if (lives <= 0) {
-        Start(now);
+    if (HasAlienLanded()) {
+        Serial.println("Alien landed: kill counter back to 0");
+        RestartWave();
         return EnigmaEvent::Mistake;
     }
     if (aliensKilled >= InvadersTuning::ALIEN_COUNT) {
@@ -56,13 +51,14 @@ EnigmaEvent InvadersEnigma::Update(uint32_t now) {
 }
 
 void InvadersEnigma::Draw(uint32_t now) {
-    if (!alienWaiting && IsAlienVisible(now)) {
+    const bool hitFlash = lastHitMs != 0 && now - lastHitMs < InvadersTuning::HIT_FLASH_MS;
+    if (!alienWaiting) {
         guide.drawBitmap(alienX, alienY, ALIEN_SPRITE, InvadersTuning::ALIEN_SIZE, InvadersTuning::ALIEN_SIZE,
                          Palette::GREEN);
     }
-    for (int i = 0; i < lives; i++) {
-        const int size = InvadersTuning::LIFE_SIZE;
-        guide.fillRect(1, 1 + i * (size + 1), size, size, Palette::RED);
+    if (hitFlash) {
+        guide.drawBitmap(hitX, hitY, ALIEN_SPRITE, InvadersTuning::ALIEN_SIZE, InvadersTuning::ALIEN_SIZE,
+                         Palette::ORANGE);
     }
     for (const Bullet &bullet : bullets) {
         if (bullet.active) {
@@ -71,6 +67,19 @@ void InvadersEnigma::Draw(uint32_t now) {
     }
     DrawShip(guide);
     DrawShip(singer);
+    if (!alienWaiting) {
+        const uint8_t level = InvadersTuning::COUNTER_LEVEL;
+        DrawKillCounter(guide, hitFlash ? Palette::WHITE : Palette::Rgb(level, level, level));
+    }
+}
+
+void InvadersEnigma::RestartWave() {
+    for (Bullet &bullet : bullets) {
+        bullet.active = false;
+    }
+    aliensKilled = 0;
+    alienWaiting = true;
+    lastHitMs = 0;
 }
 
 void InvadersEnigma::MoveShip(uint32_t now) {
@@ -121,26 +130,12 @@ void InvadersEnigma::MoveBullets(uint32_t now) {
     }
 }
 
-void InvadersEnigma::DrawShip(Screen &screen) const {
-    screen.fillRect(shipX, ShipY(), InvadersTuning::SHIP_WIDTH, InvadersTuning::SHIP_HEIGHT, Palette::WHITE);
-}
-
-int InvadersEnigma::ShipY() const {
-    return guide.height() - InvadersTuning::SHIP_HEIGHT;
-}
-
 void InvadersEnigma::MoveAlien(uint32_t now) {
     if (now - lastAlienMoveMs < InvadersTuning::ALIEN_STEP_MS) {
         return;
     }
     lastAlienMoveMs = now;
-
     alienY++;
-    if (alienY + InvadersTuning::ALIEN_SIZE > ShipY()) {
-        lives--;
-        Serial.printf("Alien landed: %d lives left\n", lives);
-        SpawnAlien(now);
-    }
 }
 
 void InvadersEnigma::CheckHits(uint32_t now) {
@@ -151,6 +146,9 @@ void InvadersEnigma::CheckHits(uint32_t now) {
             bullet.active = false;
             aliensKilled++;
             Serial.printf("Alien hit: %d killed\n", aliensKilled);
+            hitX = alienX;
+            hitY = alienY;
+            lastHitMs = now;
             SpawnAlien(now);
             return;
         }
@@ -158,28 +156,28 @@ void InvadersEnigma::CheckHits(uint32_t now) {
 }
 
 void InvadersEnigma::SpawnAlien(uint32_t now) {
-    alienColumn = random(InvadersTuning::COLUMN_COUNT);
-    alienX = InvadersTuning::FIRST_COLUMN_X + alienColumn * InvadersTuning::ALIEN_SIZE;
+    const int column = random(InvadersTuning::COLUMN_COUNT);
+    alienX = InvadersTuning::FIRST_COLUMN_X + column * InvadersTuning::ALIEN_SIZE;
     alienY = 0;
     lastAlienMoveMs = now;
-    alienSpawnMs = now;
-    lastNoteMs = now;
-    nextReplayMs = now + random(InvadersTuning::REPLAY_MIN_MS, InvadersTuning::REPLAY_MAX_MS);
 }
 
-bool InvadersEnigma::IsAlienVisible(uint32_t now) const {
-    const int alienNumber = aliensKilled + 1;
-    return alienNumber < InvadersTuning::INVISIBLE_FROM || now - alienSpawnMs < InvadersTuning::INVISIBLE_AFTER_MS;
+bool InvadersEnigma::HasAlienLanded() const {
+    return alienY + InvadersTuning::ALIEN_SIZE > ShipY();
 }
 
-uint16_t InvadersEnigma::GetSoundHz(uint32_t now) const {
-    return now - lastNoteMs < InvadersTuning::NOTE_MS ? InvadersTuning::NOTES_HZ[alienColumn] : 0;
+void InvadersEnigma::DrawKillCounter(Screen &screen, uint16_t color) const {
+    screen.setTextColor(color);
+    screen.setCursor(InvadersTuning::COUNTER_LEFT, InvadersTuning::COUNTER_TOP);
+    screen.print(aliensKilled);
+    screen.print('/');
+    screen.print(InvadersTuning::ALIEN_COUNT);
 }
 
-void InvadersEnigma::ReplayNote(uint32_t now) {
-    if (IsAlienVisible(now) || static_cast<int32_t>(now - nextReplayMs) < 0) {
-        return;
-    }
-    lastNoteMs = now;
-    nextReplayMs = now + random(InvadersTuning::REPLAY_MIN_MS, InvadersTuning::REPLAY_MAX_MS);
+void InvadersEnigma::DrawShip(Screen &screen) const {
+    screen.fillRect(shipX, ShipY(), InvadersTuning::SHIP_WIDTH, InvadersTuning::SHIP_HEIGHT, Palette::WHITE);
+}
+
+int InvadersEnigma::ShipY() const {
+    return guide.height() - InvadersTuning::SHIP_HEIGHT;
 }

@@ -1,7 +1,7 @@
 #pragma once
 #include "Button.h"
 
-// A button wired to board 2: BoardLink calls SetDown() with what board 2 sends.
+// A button wired to board 2 or 3: board 1 calls SetDown() with what that board sends.
 class RemoteButton : public Button {
 public:
     void SetDown(bool isDown);

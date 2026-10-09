@@ -1,6 +1,7 @@
 #pragma once
 #include <Arduino.h>
 #include <cstring>
+#include "Common/Config.h"
 
 // Sends a message struct over a serial wire as START_BYTE, the struct's bytes, then a checksum, so the reader
 // finds the start again if a byte is lost. Both boards must use the same struct.
@@ -24,10 +25,26 @@ namespace MessageLink {
     }
 }
 
-// Reads messages of type T without blocking: Read() returns true when a whole, valid message has arrived.
+// Reads messages of type T without blocking. Receive() copies each whole, valid message into message, and empties
+// it (all zeros: nothing pressed, LEDs off) when no message came for LinkTuning::TIMEOUT_MS. IsLinked() tells
+// whether a message came in the last TIMEOUT_MS.
 template <typename T>
 class MessageReader {
 public:
+    void Receive(HardwareSerial &serial, T &message, uint32_t now) {
+        if (Read(serial, message)) {
+            lastMessageMs = now;
+        }
+        if (!IsLinked(now)) {
+            message = {};
+        }
+    }
+
+    bool IsLinked(uint32_t now) const {
+        return now - lastMessageMs < LinkTuning::TIMEOUT_MS;
+    }
+
+private:
     bool Read(HardwareSerial &serial, T &message) {
         bool received = false;
         while (serial.available()) {
@@ -50,7 +67,7 @@ public:
         return received;
     }
 
-private:
     uint8_t buffer[sizeof(T)] = {};
     size_t count = 0;
+    uint32_t lastMessageMs = 0;
 };

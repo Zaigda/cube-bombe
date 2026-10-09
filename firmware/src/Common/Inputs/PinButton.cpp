@@ -1,8 +1,8 @@
 #include "PinButton.h"
 #include <Arduino.h>
 
-PinButton::PinButton(uint8_t buttonPin)
-    : pin(buttonPin) {
+PinButton::PinButton(uint8_t buttonPin, uint32_t maxPressMs)
+    : pin(buttonPin), maxMs(maxPressMs) {
 }
 
 void PinButton::Begin() {
@@ -10,6 +10,7 @@ void PinButton::Begin() {
     down = digitalRead(pin) == LOW;
     lastReading = down;
     lastChangeMs = millis();
+    downStartMs = lastChangeMs;
 }
 
 void PinButton::Update(uint32_t now) {
@@ -22,7 +23,14 @@ void PinButton::Update(uint32_t now) {
     pressed = false;
     if (reading != down && now - lastChangeMs >= DEBOUNCE_MS) {
         down = reading;
-        pressed = down;
+        if (maxMs == 0) {
+            pressed = down;
+        } else {
+            pressed = !down && now - downStartMs < maxMs;
+        }
+        if (down) {
+            downStartMs = now;
+        }
     }
 }
 

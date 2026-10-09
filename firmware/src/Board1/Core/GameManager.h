@@ -1,48 +1,56 @@
 #pragma once
-#include "BombCode.h"
 #include "Countdown.h"
-#include "Board1/Enigma/Enigma.h"
+#include "Board1/Enigma/EnigmaStation.h"
 #include "Common/Inputs/Button.h"
-#include "Common/Outputs/Screen.h"
+#include "Common/Outputs/LedState.h"
 
-enum class GameState : uint8_t { Waiting, Playing, Defused, Exploded };
+// Where the whole bomb is: before the first Start, timer running, all solved (VICTOIRE), or timer at 0 (BOOM).
+enum class GameState : uint8_t { Waiting, Running, Defused, Exploded };
 
-// A whole game, from waiting to defused or exploded. Not wired yet: to be rewritten for 3 boards.
+// The bomb rules: timer, VICTOIRE, BOOM, and the global reset when the reset button is held GLOBAL_RESET_HOLD_MS.
 class GameManager {
 public:
-    GameManager(Countdown &gameCountdown, const Button &startButton, BombCode &bombCode);
+    GameManager(Countdown &bombTimer, const Button &globalResetButton);
 
-    void AddScreen(Screen &screen);
+    void AddStation(EnigmaStation &station);
 
-    void AddEnigma(Enigma &enigma);
+    void Begin(uint32_t now);
 
     void Update(uint32_t now);
 
-    void Draw(uint32_t now);
-
     GameState GetState() const;
 
-private:
-    void StartGame(uint32_t now);
+    bool IsOver() const;
 
-    void UpdatePlaying(uint32_t now);
+    uint32_t GetTimeInStateMs(uint32_t now) const;
+
+    uint32_t GetResetHoldMs(uint32_t now) const;
+
+private:
+    void UpdateResetHold(uint32_t now);
+
+    void UpdateRunning(uint32_t now);
+
+    bool IsAnyStationStarted() const;
+
+    bool AreAllStationsSolved() const;
+
+    void Reset(uint32_t now);
+
+    void End(GameState endState, LedState stationLed, uint32_t now);
 
     void ChangeState(GameState newState, uint32_t now);
 
-    static constexpr uint8_t MAX_ENIGMAS = 4;
-    static constexpr uint8_t MAX_SCREENS = 6;
-    static constexpr uint32_t BLINK_MS = 250;
+    static constexpr uint8_t MAX_STATIONS = 4;
 
     Countdown &countdown;
-    const Button &start;
-    BombCode &code;
-
-    Enigma *enigmas[MAX_ENIGMAS] = {};
-    uint8_t enigmaCount = 0;
-    Screen *screens[MAX_SCREENS] = {};
-    uint8_t screenCount = 0;
+    const Button &resetButton;
+    EnigmaStation *stations[MAX_STATIONS] = {};
+    uint8_t stationCount = 0;
 
     GameState state = GameState::Waiting;
-    uint8_t currentEnigma = 0;
     uint32_t stateStartMs = 0;
+    bool resetHeld = false;
+    bool resetDone = false;
+    uint32_t resetHoldStartMs = 0;
 };

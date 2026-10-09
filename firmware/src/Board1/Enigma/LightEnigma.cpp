@@ -7,18 +7,19 @@ LightEnigma::LightEnigma(const Enigma3InputMessage &lightSensors)
 
 void LightEnigma::Start(uint32_t) {
     pattern = random(LightTuning::PATTERN_COUNT);
-    calibrated = false;
+    for (int hole = 0; hole < LightTuning::HOLE_COUNT; hole++) {
+        reference[hole] = 0;
+    }
+    patternPrinted = false;
     ledMask = 0;
 }
 
 EnigmaEvent LightEnigma::Update(uint32_t) {
-    if (!calibrated) {
-        for (int hole = 0; hole < LightTuning::HOLE_COUNT; hole++) {
-            reference[hole] = sensors.light[hole];
-        }
-        calibrated = true;
+    if (!patternPrinted) {
         PrintPattern();
+        patternPrinted = true;
     }
+    UpdateReferences();
 
     int coveredCount = 0;
     bool matches = true;
@@ -48,6 +49,14 @@ void LightEnigma::Draw(uint32_t) {
 
 uint16_t LightEnigma::GetLedMask() const {
     return ledMask;
+}
+
+void LightEnigma::UpdateReferences() {
+    for (int hole = 0; hole < LightTuning::HOLE_COUNT; hole++) {
+        if (sensors.light[hole] > reference[hole] && sensors.light[hole] <= LightTuning::MAX_LIGHT) {
+            reference[hole] = sensors.light[hole];
+        }
+    }
 }
 
 bool LightEnigma::IsCovered(int hole) const {

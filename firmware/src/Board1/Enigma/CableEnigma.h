@@ -1,10 +1,10 @@
 #pragma once
 #include "Enigma.h"
 #include "Board1/Core/BombCode.h"
+#include "Board1/Outputs/Screen.h"
 #include "Common/Inputs/CablePanel.h"
-#include "Common/Outputs/Screen.h"
 
-// Enigma 1, second part: shows "BRANCHEZ" and is solved once every cable is in the plug the bomb code gives it.
+// Enigma 1, second part: shows Texts::PLUG and is solved once every cable is in the plug the bomb code gives it.
 class CableEnigma : public Enigma {
 public:
     CableEnigma(const CablePanel &cablePanel, Screen &cableScreen, const BombCode &bombCode);

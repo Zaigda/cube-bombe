@@ -1,6 +1,10 @@
 #include <Arduino.h>
+#include <iterator>
 #include "Config.h"
 #include "Board1/Core/BombCode.h"
+#include "Board1/Core/BombDisplay.h"
+#include "Board1/Core/Countdown.h"
+#include "Board1/Core/GameManager.h"
 #include "Board1/Core/Palette.h"
 #include "Board1/Enigma/CableEnigma.h"
 #include "Board1/Enigma/EnigmaStation.h"
@@ -9,21 +13,22 @@
 #include "Board1/Enigma/SnakeEnigma.h"
 #include "Board1/Enigma/LightEnigma.h"
 #include "Board1/Outputs/PanelOutput.h"
+#include "Board1/Outputs/Screen.h"
 #include "Common/Inputs/CablePanel.h"
 #include "Common/Inputs/InputManager.h"
 #include "Common/Inputs/PinButton.h"
 #include "Common/Inputs/RemoteButton.h"
-#include "Common/Outputs/RemoteLed.h"
-#include "Common/Outputs/Screen.h"
 #include "Common/Outputs/StatusLed.h"
 #include "Common/Messages/Enigma2Message.h"
 #include "Common/Messages/Enigma3Message.h"
 #include "Common/Messages/MessageLink.h"
 #include "Common/Config.h"
 
+constexpr uint16_t ALL_GRID_LEDS = 0b111111111;
+
 PinButton leftButton(Pins::SNAKE_LEFT_BUTTON);
 PinButton rightButton(Pins::SNAKE_RIGHT_BUTTON);
-PinButton snakeStartButton(Pins::SNAKE_RESET_BUTTON);
+PinButton snakeStartButton(Pins::SNAKE_RESET_BUTTON, GameTuning::RESET_FEEDBACK_AFTER_MS);
 RemoteButton invadersStartButton;
 RemoteButton shipLeftButton;
 RemoteButton shipRightButton;
@@ -32,8 +37,6 @@ CablePanel cables(Pins::CABLES, Pins::PLUGS);
 InputManager inputs;
 
 StatusLed snakeLed(Pins::STATUS_LED);
-RemoteLed invadersLed;
-RemoteLed lightLed;
 
 Screen snakeScreen(Panels::PANEL_WIDTH, Panels::SNAKE_PANELS * Panels::PANEL_HEIGHT, 0);
 Screen guideScreen(Panels::PANEL_WIDTH, Panels::PANEL_HEIGHT, Panels::GUIDE_PANEL);
@@ -48,38 +51,46 @@ InvadersEnigma invaders(shipLeftButton, shipRightButton, guideScreen, singerScre
 
 MessageReader<Enigma3InputMessage> boardCReader;
 Enigma3InputMessage boardC = {};
-uint32_t lastBoardCMs = 0;
 LightEnigma light(boardC);
 
-EnigmaStation snakeStation("Snake", snakeCables, snakeStartButton, snakeLed, &snakeScreen);
-EnigmaStation invadersStation("Invaders", invaders, invadersStartButton, invadersLed, &guideScreen);
-EnigmaStation lightStation("Light", light, lightStartButton, lightLed, nullptr);
+Countdown countdown;
+EnigmaStation snakeStation("Snake", snakeCables, snakeStartButton, countdown);
+EnigmaStation invadersStation("Invaders", invaders, invadersStartButton, countdown);
+EnigmaStation lightStation("Light", light, lightStartButton, countdown);
+GameManager game(countdown, snakeStartButton);
+BombDisplay bombDisplay(game, snakeScreen);
 
 MessageReader<Enigma2InputMessage> boardBReader;
 Enigma2InputMessage boardB = {};
-uint32_t lastBoardBMs = 0;
 uint32_t lastSendMs = 0;
 
 void ReceiveFromBoardB(uint32_t now) {
-    if (boardBReader.Read(Serial2, boardB)) {
-        lastBoardBMs = now;
-    }
-    if (now - lastBoardBMs >= LinkTuning::TIMEOUT_MS) {
-        boardB = {};
-    }
+    boardBReader.Receive(Serial2, boardB, now);
     invadersStartButton.SetDown(boardB.resetBtn);
-    shipLeftButton.SetDown(boardB.leftBtn || leftButton.IsDown());
-    shipRightButton.SetDown(boardB.rightBtn || rightButton.IsDown());
+    shipLeftButton.SetDown(boardB.leftBtn);
+    shipRightButton.SetDown(boardB.rightBtn);
 }
 
 void ReceiveFromBoardC(uint32_t now) {
-    if (boardCReader.Read(Serial1, boardC)) {
-        lastBoardCMs = now;
-    }
-    if (now - lastBoardCMs >= LinkTuning::TIMEOUT_MS) {
-        boardC = {};
-    }
+    boardCReader.Receive(Serial1, boardC, now);
     lightStartButton.SetDown(boardC.resetBtn);
+}
+
+uint16_t GetGridMask(uint32_t now) {
+    if (game.GetState() == GameState::Defused) {
+        const uint32_t step = now / EndTuning::CHASE_STEP_MS;
+        return 1 << EndTuning::CHASE_ORDER[step % std::size(EndTuning::CHASE_ORDER)];
+    }
+    if (game.GetState() == GameState::Exploded) {
+        return StatusLed::IsLit(LedState::FastBlinking, now) ? ALL_GRID_LEDS : 0;
+    }
+    if (lightStation.IsSolved()) {
+        return ALL_GRID_LEDS;
+    }
+    if (!lightStation.IsStarted()) {
+        return now % GameTuning::PULSE_MS < GameTuning::PULSE_MS / 2 ? 1 << LightTuning::IDLE_LED : 0;
+    }
+    return lightStation.IsPlaying() ? light.GetLedMask() : 0;
 }
 
 void SendToBoards(uint32_t now) {
@@ -89,28 +100,54 @@ void SendToBoards(uint32_t now) {
     lastSendMs = now;
 
     const Enigma2OutputMessage message = {
-        .ledState = invadersLed.GetState()
+        .ledState = invadersStation.GetLedState()
     };
-
     MessageLink::Send(Serial2, message);
 
-    const uint16_t ledMask = lightStation.IsPlaying() ? light.GetLedMask() : 0;
-    const Enigma3OutputMessage lightMessage = {ledMask, static_cast<uint8_t>(lightLed.GetState())};
+    const Enigma3OutputMessage lightMessage = {GetGridMask(now), lightStation.GetLedState()};
     MessageLink::Send(Serial1, lightMessage);
+}
+
+void DrawLinkCheck(uint32_t now) {
+    if (!boardBReader.IsLinked(now)) {
+        snakeScreen.DrawCenteredText(Texts::BOARD_2, Palette::RED, StationTuning::LINK_CHECK_TOP);
+    }
+    if (!boardCReader.IsLinked(now)) {
+        snakeScreen.DrawCenteredText(Texts::BOARD_3, Palette::RED,
+                                     StationTuning::LINK_CHECK_TOP + StationTuning::LINK_CHECK_LINE);
+    }
+}
+
+void DrawScreens(uint32_t now) {
+    snakeScreen.fillScreen(Palette::BLACK);
+    guideScreen.fillScreen(Palette::BLACK);
+    singerScreen.fillScreen(Palette::BLACK);
+    if (!game.IsOver()) {
+        snakeStation.Draw(now);
+        invadersStation.Draw(now);
+        lightStation.Draw(now);
+    }
+    if (game.GetState() == GameState::Waiting) {
+        DrawLinkCheck(now);
+    }
+    bombDisplay.Draw(now);
+    output.Show();
 }
 
 void setup() {
     Serial.begin(115200);
+    output.AddScreen(snakeScreen);
+    output.AddScreen(guideScreen);
+    output.AddScreen(singerScreen);
+    const bool outputStarted = output.Begin();
+
     Serial2.begin(LinkTuning::BAUD, SERIAL_8N1, Pins::LINK_RX, Pins::LINK_TX);
     Serial1.begin(LinkTuning::BAUD, SERIAL_8N1, Pins::LIGHT_LINK_RX, Pins::LIGHT_LINK_TX);
     delay(2000);
 
-    output.AddScreen(snakeScreen);
-    output.AddScreen(guideScreen);
-    output.AddScreen(singerScreen);
-    if (!output.Begin()) {
-        Serial.println("Output failed to start: stopped");
+    if (!outputStarted) {
         while (true) {
+            Serial.printf("Panels failed to start: %s\n", output.GetError());
             delay(1000);
         }
     }
@@ -125,10 +162,19 @@ void setup() {
     inputs.Add(lightStartButton);
     inputs.Add(cables);
     inputs.Begin();
+    snakeLed.Begin();
 
-    snakeStation.Begin(millis());
-    invadersStation.Begin(millis());
-    lightStation.Begin(millis());
+    snakeStation.AddScreen(snakeScreen);
+    invadersStation.AddScreen(guideScreen);
+    invadersStation.AddScreen(singerScreen);
+    game.AddStation(snakeStation);
+    game.AddStation(invadersStation);
+    game.AddStation(lightStation);
+    game.Begin(millis());
+
+    bombDisplay.AddScreen(snakeScreen);
+    bombDisplay.AddScreen(guideScreen);
+    bombDisplay.AddScreen(singerScreen);
 }
 
 void loop() {
@@ -138,16 +184,10 @@ void loop() {
     ReceiveFromBoardC(now);
 
     inputs.Update(now);
-    snakeStation.Update(now);
-    invadersStation.Update(now);
-    lightStation.Update(now);
+    game.Update(now);
+    snakeLed.Set(snakeStation.GetLedState());
+    snakeLed.Update(now);
 
-    snakeScreen.fillScreen(Palette::BLACK);
-    guideScreen.fillScreen(Palette::BLACK);
-    singerScreen.fillScreen(Palette::BLACK);
-    snakeStation.Draw(now);
-    invadersStation.Draw(now);
-    output.Show();
-
+    DrawScreens(now);
     SendToBoards(now);
 }

@@ -1,4 +1,5 @@
 #include "Screen.h"
+#include "Board1/Config.h"
 
 Screen::Screen(uint16_t width, uint16_t height, uint8_t panelIndex)
     : GFXcanvas16(width, height), firstPanel(panelIndex) {
@@ -18,7 +19,9 @@ void Screen::DrawCenteredText(const char *text, uint16_t color) {
     uint16_t textWidth;
     uint16_t textHeight;
     getTextBounds(text, 0, 0, &x, &y, &textWidth, &textHeight);
-    DrawCenteredText(text, color, (height() - textHeight) / 2);
+    for (int16_t band = 0; band < height(); band += Panels::PANEL_HEIGHT) {
+        DrawCenteredText(text, color, band + (Panels::PANEL_HEIGHT - textHeight) / 2);
+    }
 }
 
 void Screen::DrawCenteredText(const char *text, uint16_t color, int16_t top) {

@@ -1,227 +1,240 @@
 # Cube-bombe
 
-The cube-bombe is a bomb that two players defuse together (Enjmin "ALT in&out" workshop). It holds 3 enigmas (puzzles), played in any order:
-in each one, a player acts without seeing and the other guides. You cannot lose an enigma: only the global timer makes the bomb explode.
-This repo is the firmware, the program that runs on the cube's ESP32-S3 boards (small programmable boards). Today it runs only enigma 1's snake,
-on board A: 2 HUB75 panels (64x32 LED matrices) form one 64x64 picture, and 2 buttons turn the snake a quarter turn to its own left or right
-(relative to where the head points, not to the screen), at its next move.
+The cube-bombe is a bomb that two players defuse together (Enjmin "ALT in&out" workshop). It holds 3 enigmas (puzzles),
+played in any order: in each one, a player acts without seeing and the other guides. You cannot lose an enigma and there
+is no penalty: only the global timer makes the bomb explode. This repo is the firmware of the cube's 3 ESP32-S3 boards.
+
+| Board | Env (program) | Role |
+|---|---|---|
+| Board 1 | `board-a` | **The brain.** Runs the whole game and the 3 enigmas, drives the 4 HUB75 panels (64x32 LEDs each), reads the snake buttons and the cables |
+| Board 2 | `board-b` | Remote I/O of enigma 2: reads its 2 microphones and its Start/Reset button, lights its status LED |
+| Board 3 | `board-c` | Remote I/O of enigma 3: reads its 9 light sensors and its Start/Reset button, lights its 3x3 LED grid and its status LED |
+
+Boards 2 and 3 have no game rules. Every 50 ms they send what they read to board 1 over a serial wire (UART), and board
+1 sends back what their LEDs show. A board silent for 500 ms counts as "nothing pressed, LEDs off" on the other side.
+
+| Panel | Screen | Shows |
+|---|---|---|
+| 0 and 1 | `snakeScreen` (64x64) | Enigma 1: the snake, then "BRANCHE" |
+| 2 | `guideScreen` | Enigma 2 for the guide: alien, shots, ship, kill counter |
+| 3 | `singerScreen` | Enigma 2 for the singer: the ship only |
+
+## How a game goes
+
+- **Enigma 1, snake + cables.** Two buttons steer the snake: each press is a quarter turn to the snake's own left or
+  right (2 quick presses give 2 quarter turns, one per step). One level per cable: the snake has the cable's color, the
+  apple the color of the plug that cable goes into. A wall or its own body = "RATE", and the snake restarts at level 1
+  with the same colors. After the 3rd apple the screen shows "BRANCHE": plug each cable into its plug.
+- **Enigma 2, Space Invaders by voice.** The singer moves the ship with the left or right microphone (both heard: the
+  louder wins). The ship fires on its own. Only the guide sees the alien and the kill counter (`N/20`). An alien
+  reaching the ship's line = "RATE", and the counter goes back to 0. 20 kills win.
+- **Enigma 3, light.** 9 holes, each with a light sensor and an LED. Before its Start, the middle LED blinks. A random
+  pattern of 6 holes must be covered. A covered hole of the pattern lights its LED; covering all 9 holes turns every LED
+  off. Solved when exactly the pattern is covered (solved: all 9 LEDs on). No screen and no "RATE": only the grid and
+  the status LED.
+
+1. **Waiting.** At power-on, the snake and invaders screens show "DEPART" pulsing slowly, with the bomb timer under it
+   (5:00, still). All status LEDs are off.
+2. **Start.** Each enigma has a Start/Reset button. A press starts it: its game replaces "DEPART", its LED blinks. **The
+   first Start of any enigma starts the timer.** The timer only shows under "DEPART" (enigmas not started yet); it turns
+   red for the last 30 s.
+3. **Reset one enigma.** A press during play (or during "RATE") restarts that enigma from zero: back to "DEPART", LED
+   off. The timer keeps running. A second press starts it again.
+4. **Mistake.** "RATE" in big white letters on red for 1 s, then play goes on.
+5. **Solved.** A green flash, then "DESAMORCE" in green; LED steady on. Its button does nothing any more.
+6. **All 3 solved: VICTOIRE.** On every panel, once: a green flash, rings growing (white, cyan, green), then "VICTOIRE"
+   scrolling in big green letters (on each panel) until the global reset. Every status LED on, one LED running round
+   the grid.
+7. **Timer at 0: BOOM.** On every panel, in a loop: a white flash, rings growing (yellow, orange, red), then "BOOM"
+   blinking red. Every status LED and the whole grid blink fast.
+8. **Frozen.** After VICTOIRE or BOOM, every enigma button is ignored until the global reset.
+9. **New game (global reset).** Hold the snake Start/Reset button 8 s. After 2 s the snake screen shows "RESET" and a
+   bar filling up to 8 s; letting go earlier cancels it. At 8 s the bar turns green with "PRET": let go. Everything
+   goes back to step 1: timer full and stopped, new cable code, new light pattern. It works at any moment. A short
+   press (under 2 s) of this button still starts or resets the snake; it counts when the button is released ("DEPART"
+   turns green while the button is held). **Backup:** the RST button of board 1 restarts the game too.
 
 ## Change the game
 
-Paths are relative to `firmware/src/`. After a change, build and upload again (see "Build and upload"). In `Config.h`, values are grouped
-in blocks: `SnakeTuning::STEP_MS` is the line `constexpr uint32_t STEP_MS = 300;` inside the block `namespace SnakeTuning { ... }`.
-Search for the last word only (`STEP_MS`), change only the number, and keep the `;` at the end.
+Paths are relative to `firmware/src/`. Values are grouped in blocks: `SnakeTuning::STEP_MS` is the line
+`constexpr uint32_t STEP_MS = 250;` inside `namespace SnakeTuning { ... }`. Search for the last word (`STEP_MS`), change
+only the number, keep the `;`. Times are in ms, positions and sizes in LEDs. Then upload to the board(s) in the last
+column.
 
-| I want to... | File | Change this | Now |
-|---|---|---|---|
-| Make the snake faster or slower | `Config.h` | `SnakeTuning::STEP_MS`: time between two moves, in ms. Lower = faster. Speed in LEDs per second = `CELL_SIZE * 1000 / STEP_MS`. Only the last press before each move counts: at high speed, two quick presses give a single quarter turn | `300` (about 13 LEDs/s) |
-| Make the cells bigger or smaller | `Config.h` | `SnakeTuning::CELL_SIZE`: width of one cell (snake part or apple), in LEDs. The grid is `64 / CELL_SIZE` cells wide and `SNAKE_PANELS * 32 / CELL_SIZE` high: pick a value that divides 32. On 2 panels, 2 gives 32 x 32 cells, 4 gives 16 x 16, 8 gives 8 x 8. Keep the grid much bigger than the snake: the apple needs a free cell, or the game freezes | `4` (16 x 16 grid) |
-| Change the starting length | `Config.h` | `SnakeTuning::START_LENGTH`, in cells (1 cell = `CELL_SIZE` x `CELL_SIZE` LEDs). At most `START_COLUMN + 1` (the tail is drawn left of the head) and at most `MAX_LENGTH` | `2` |
-| Change where the snake starts | `Config.h` | `SnakeTuning::START_COLUMN`: column of the head, 0 = left edge. It starts on the middle row, going right: keep it at most the grid width minus 2, or it hits the wall at once and restarts forever | `3` |
-| Change how much it grows | `Config.h` | `SnakeTuning::GROWTH_FACTOR`: each apple multiplies the length (1 = never grows). Capped by `MAX_LENGTH` in `Enigma/SnakeEnigma.h` | `2` (2, 4, 8, 16 cells), cap `64` |
-| Change the apple colors | `Core/BombCode.cpp` | `COLORS`: one color per apple, from `Core/Palette.h`. In the enigma 1 design, they will be the colors of the real cable plugs | `RED, GREEN, BLUE, YELLOW` |
-| Always use the same apple order | `main.cpp` | Remove the 2 `code.Shuffle()` calls (they pick a new random order at boot and after each win). The apples then follow `COLORS` | random |
-| Change the number of apples | `Core/BombCode.h` | `BombCode::LENGTH`. Then give `COLORS` (in `Core/BombCode.cpp`) exactly that many colors (a missing one is black, so invisible; an extra one does not compile), and write `0` to `LENGTH - 1` in `order` (in `BombCode.h`, just below `LENGTH`) | `4` |
-| Change the snake colors | `Enigma/SnakeEnigma.cpp` | In `Draw()`, the line `... (i == 0) ? Palette::ORANGE : Palette::WHITE;`: the first color is the head, the second the body. Avoid apple colors: the guide would confuse them | orange, white |
-| Change the background | `main.cpp` | `snakeScreen.fillScreen(Palette::BLACK)` in `loop()` | black |
-| Add a color | `Core/Palette.h` | After `ORANGE`, before the closing `}`, add a line like `constexpr uint16_t PURPLE = Rgb(160, 0, 255);` (red, green, blue, from 0 to 255). Then use `Palette::PURPLE` anywhere (in `COLORS`, in `Draw()`...). LEDs do not look like a PC screen: check it on the panel | |
-| Fix double or missed button presses | `Inputs/PinButton.h` | `DEBOUNCE_MS`: how long a press must stay stable before it counts, in ms | `30` |
-| Change the panel brightness | `Config.h` | `Panels::BRIGHTNESS`, from 0 to 255 | `60` |
-| Fix a panel shown upside down | `Config.h` | `Panels::ROTATED_180`: one value per panel, in the order panel 0, 1, 2, 3 (panel 0 = the one whose ribbon cable comes from the board; 2 and 3 are not plugged yet). Swap the wrong panel's value (`true` <-> `false`). Correct picture at power-on: the snake (orange head, white body) appears on the left, just below the line between the two panels, moving right. If the top half of the picture is on the bottom panel, swap the two panels: `ROTATED_180` only turns each panel on its own | `{false, true, false, false}` |
-| Change the number of panels | `Config.h` | `Panels::PANEL_COUNT`: panels in the chain, from 1 to `MAX_PANELS` (4). `Panels::SNAKE_PANELS`: how many of them the snake uses, from panel 0 | `2`, `2` |
-| Move a button | `Config.h` | `Pins::SNAKE_LEFT_BUTTON`, `Pins::SNAKE_RIGHT_BUTTON` (GPIO numbers, see "Wiring"). Then move the wire to the new pin (the other leg stays on GND) | `41`, `42` |
+| I want to... | File | Change this | Now | Upload to |
+|---|---|---|---|---|
+| Change the game length | `Board1/Config.h` | `GameTuning::GAME_DURATION_MS` | 5 min | `board-a` |
+| Change when the timer turns red | `Board1/Config.h` | `GameTuning::FINAL_WARNING_MS` | 30 s | `board-a` |
+| Change the global reset | `Board1/Config.h` | `GameTuning::GLOBAL_RESET_HOLD_MS` (hold time), `RESET_FEEDBACK_AFTER_MS` (when "RESET" shows; also the longest short press of the snake button) | `8000`, `2000` | `board-a` |
+| Change the "DEPART" pulse | `Board1/Config.h` | `GameTuning::PULSE_MS` (one cycle, also the blink of the grid LED before the light Start), `PULSE_MIN_LEVEL` (darkest, 0-255) | `2000`, `120` | `board-a` |
+| Change a text | `Board1/Config.h` | `Texts::START`, `FAILED`, `SOLVED`, `PLUG`, `VICTORY`, `BOOM`, `RESET`, `RESET_DONE`, `BOARD_2`, `BOARD_3`: uppercase, no accents (the font has none), 10 characters at most | "DEPART", "RATE", ... | `board-a` |
+| Change "RATE" or the solved flash | `Board1/Config.h` | `StationTuning::FAIL_MS` (how long "RATE" stays), `FAILED_TEXT_SIZE`, `SOLVED_FLASH_MS` (green screen before "DESAMORCE") | `1000`, `2`, `400` | `board-a` |
+| Move "DEPART", the timer or the board warning | `Board1/Config.h` | `StationTuning::START_TEXT_TOP`, `TIMER_TEXT_TOP`, `TIMER_TEXT_SIZE`, `TIMER_COLOR`, `LINK_CHECK_TOP` ("CARTE 2"), `LINK_CHECK_LINE` (gap to "CARTE 3") | `4`, `15`, `2`, cyan, `36`, `10` | `board-a` |
+| Change the BOOM animation (VICTOIRE uses the same flash and ring values) | `Board1/Config.h` | `EndTuning::BOOM_FLASH_MS`, `BOOM_RINGS_MS`, `BOOM_RING_COUNT`, `BOOM_RING_GAP`, `BOOM_TEXT_MS`, `BOOM_BLINK_MS`, `BOOM_TEXT_SIZE` | `150`, `1200`, `3`, `6`, `2400`, `300`, `2` | `board-a` |
+| Change the VICTOIRE text | `Board1/Config.h` | `EndTuning::VICTORY_TEXT_SIZE`, `VICTORY_SCROLL_STEP_MS` (time per LED of scrolling) | `3`, `20` | `board-a` |
+| Change the VICTOIRE grid chase | `Board1/Config.h` | `EndTuning::CHASE_STEP_MS` (keep a multiple of 50), `CHASE_ORDER` (grid order 0 1 2 / 3 4 5 / 6 7 8) | `150`, round the edge | `board-a` |
+| Make the snake faster or slower | `Board1/Config.h` | `SnakeTuning::STEP_MS`. LEDs per second = `CELL_SIZE * 1000 / STEP_MS` | `250` (8 LEDs/s) | `board-a` |
+| Change the snake cells | `Board1/Config.h` | `SnakeTuning::CELL_SIZE` (a value that divides 32) | `2` | `board-a` |
+| Change the snake length per level | `Board1/Config.h` | `SnakeTuning::LEVEL_LENGTHS` | `16, 32, 48` | `board-a` |
+| Change where the snake starts | `Board1/Config.h` | `SnakeTuning::START_X`, `START_Y` (the head; it goes right) | `16`, `48` | `board-a` |
+| Change where the first apple appears | `Board1/Config.h` | `SnakeTuning::FIRST_APPLE_MIN_X` ... `FIRST_APPLE_MAX_Y` | x 32-48, y 16-32 | `board-a` |
+| Change the "eating" head | `Board1/Config.h` | `SnakeTuning::MOUTH_SIZE`, `MOUTH_MS` | `4`, `250` | `board-a` |
+| Change how many turn presses wait | `Board1/Config.h` | `SnakeTuning::TURN_QUEUE_SIZE` | `2` | `board-a` |
+| Change cable or plug colors, or the solutions | `Board1/Core/BombCode.cpp` | `CABLE_COLORS`, `PLUG_COLORS`, `SOLUTIONS` (plug of cable 0, 1, 2) | 3 solutions | `board-a` |
+| Change Space Invaders speeds | `Board1/Config.h` | `InvadersTuning::ALIEN_STEP_MS` (alien fall), `SHIP_STEP_MS`, `FIRE_MS`, `BULLET_STEP_MS` | `500`, `40`, `500`, `20` | `board-a` |
+| Change the kills to win | `Board1/Config.h` | `InvadersTuning::ALIEN_COUNT` | `20` | `board-a` |
+| Change the kill counter | `Board1/Config.h` | `InvadersTuning::COUNTER_LEFT`, `COUNTER_TOP`, `COUNTER_LEVEL` (gray, 0-255), `HIT_FLASH_MS` (after a hit: counter white, hit alien orange) | `1`, `1`, `180`, `300` | `board-a` |
+| Change the light sensitivity | `Board1/Config.h` | `LightTuning::COVERED_PERCENT`: covered below this % of the brightest light the hole had since Start | `50` | `board-a` |
+| Change the light patterns | `Board1/Config.h` | `LightTuning::PATTERNS` (1 = hole to cover); a new pattern also raises `PATTERN_COUNT` | 6 patterns | `board-a` |
+| Change the grid LED blinking before the light Start | `Board1/Config.h` | `LightTuning::IDLE_LED` (grid order 0 1 2 / 3 4 5 / 6 7 8) | `4` (middle) | `board-a` |
+| Smooth the light sensors | `Board3/Config.h` | `LightTuning::SAMPLES` (reads averaged per value) | `4` | `board-c` |
+| Change the microphone sensitivity | `Board2/Config.h` | `SoundTuning::NOISE_RATIO`, `MIN_MARGIN`: lower = more sensitive | `2.0`, `15` | `board-b` |
+| Change the voice reaction time | `Board2/Config.h` | `SoundTuning::ATTACK_WINDOWS` (to move), `RELEASE_WINDOWS` (to stop), in steps of 50 ms | `2`, `5` | `board-b` |
+| Change when a long sound is ignored | `Board2/Config.h` | `SoundTuning::MAX_HOLD_MS`: after this, the sound is learned as background (2 s deaf) | `4000` | `board-b` |
+| Change the LED blinking | `Common/Config.h` | `StatusLight::BLINK_MS` (playing), `FAST_BLINK_MS` (BOOM) | `400`, `150` | all 3 |
+| Change the serial links | `Common/Config.h` | `LinkTuning::BAUD`, `SEND_MS`, `TIMEOUT_MS` | `115200`, `50`, `500` | all 3 |
+| Change the panel brightness | `Board1/Config.h` | `Panels::BRIGHTNESS` (0-255) | `60` | `board-a` |
+| Fix a panel shown upside down | `Board1/Config.h` | `Panels::ROTATED_180`: one value per panel, 0 to 3; swap the wrong one | `{false, true, false, true}` | `board-a` |
+| Swap the guide and singer panels | `Board1/Config.h` | `Panels::GUIDE_PANEL`, `SINGER_PANEL` | `2`, `3` | `board-a` |
+| Fix double or missed button presses | `Common/Inputs/PinButton.h` | `DEBOUNCE_MS` (board 1 buttons) | `30` | `board-a` |
+| Add a color | `Board1/Core/Palette.h` | Add `constexpr uint16_t MAGENTA = Rgb(255, 0, 255);`, use `Palette::MAGENTA`; prefer channels at 0 or 255 (the panel darkens middle values), check it on the panel | | `board-a` |
 
-## How it works
+## How the code works
 
-`setup()` runs once at power-on, then `loop()` runs again and again, many times per second. `main.cpp` creates every object (a named part of
-the program with its own data, like `snake`) and connects them. A class is the kind of an object: `snake` is a `SnakeEnigma`, written in `SnakeEnigma.h/.cpp`.
-
-Every loop reads `now = millis()` (milliseconds since power-on) once and passes it to everyone, then:
-1. **Read the buttons**: `inputs.Update(now)`.
-2. **Update the enigma**: `snake.Update(now)` moves the snake once every `STEP_MS` and returns an event: `None`; `Mistake` (it hit a wall or itself: it
-   restarts by itself, back to `START_LENGTH` and the first apple, same colors); or `Solved` (all apples eaten: `loop()` then calls `code.Shuffle()` and
-   `snake.Start(now)`, which gives a new random order and a new snake).
-3. **Draw**: clear `snakeScreen` to black, then `snake.Draw(now)` paints the apple and the snake on it.
-4. **Show**: `output.Show()` sends the picture to the panels, at most once every `Panels::FRAME_MS` (20 ms).
-
-The objects of `main.cpp`, written `object (Class)`. Arrows follow the data through one loop; the word on an arrow is the function that links them.
-
-```text
-inputs (InputManager) --Update(now)--> leftButton (PinButton, GPIO 41) and rightButton (PinButton, GPIO 42)
-                                                   |  WasPressed()
-                                                   v
-code (BombCode) ------- GetColor() ------> snake (SnakeEnigma)
-                                                   |  Draw(now) paints on
-                                                   v
-                                           snakeScreen (Screen)    the 64x64 picture in memory
-                                                   |  read by output.Show()
-                                                   v
-                                           output (PanelOutput) --> panel 0: rows 0-31
-                                                                --> panel 1: rows 32-63, turned 180
-```
+`setup()` runs once at power-on, then `loop()` runs again and again. Each loop of board 1 reads `now = millis()` once,
+then: receives what boards 2 and 3 sent; `inputs.Update(now)` reads the buttons and cables; `game.Update(now)` checks
+the global reset, updates the 3 stations, starts the timer and ends the game; the snake status LED shows its station's
+`GetLedState()`; the stations draw their enigma and texts (before the first Start, `DrawLinkCheck()` adds "CARTE 2" or
+"CARTE 3" for a silent board), then `bombDisplay` draws VICTOIRE, BOOM or RESET over them, and `output.Show()` sends
+the pictures to the panels; every 50 ms, it sends boards 2 and 3 what their LEDs show (the `GetLedState()` of their
+station, and the grid from `GetGridMask()`).
 
 ## Files and classes
 
-`firmware/platformio.ini` is the build setup (board, pinned library versions, the `cube` env). The code is in `firmware/src/`:
+`firmware/platformio.ini` holds one env per board. The code is in `firmware/src/`: `Board1/`, `Board2/` and `Board3/`
+are each board's program, `Common/` is built into all 3.
 
 | File | Class | Role |
 |---|---|---|
-| `main.cpp` | | Creates and connects every object; `setup()` and `loop()` |
-| `Config.h` | | Values to tune and pins, in the blocks `Timing`, `SnakeTuning`, `Panels`, `Pins` |
-| `Core/Palette.h` | | The panel colors |
-| `Core/BombCode.h/.cpp` | `BombCode` | The secret apple color order of a game. `Shuffle()` picks a new random order |
-| `Core/Countdown.h/.cpp` | `Countdown` | The bomb timer: counts down, `Stop()` freezes it, penalties shorten it. Not wired yet |
-| `Core/GameManager.h/.cpp` | `GameManager` | A whole game: waiting, playing the enigmas, defused or exploded. Not wired yet |
-| `Enigma/Enigma.h` | `Enigma` | The base of every enigma: `Start()` resets it, `Update()` plays one loop and returns an event, `Draw()` paints it |
-| `Enigma/SnakeEnigma.h/.cpp` | `SnakeEnigma` | Enigma 1: the snake |
-| `Inputs/Sensor.h` | `Sensor` | Anything `InputManager` reads: `Begin()` once in setup, `Update()` every loop |
-| `Inputs/Button.h` | `Button` | A two-state sensor: `IsDown()` while held, `WasPressed()` only on the loop where the press starts |
-| `Inputs/PinButton.h/.cpp` | `PinButton` | A push button between a pin and GND. A change counts once stable for 30 ms, which hides the contact bounce |
-| `Inputs/InputManager.h/.cpp` | `InputManager` | Keeps every sensor and calls `Begin()` and `Update()` on all of them |
-| `Outputs/Screen.h/.cpp` | `Screen` | A picture in memory, 64 LEDs wide and 32 x (number of panels) tall; you choose its first panel when you create it. Enigmas draw on it with Adafruit GFX, a drawing library (`fillRect`, `drawLine`, `drawCircle`, `print`...) |
-| `Outputs/Output.h/.cpp` | `Output` | Displays Screens: `AddScreen()` then `Begin()` in setup (`Begin()` returns false on an error), then `Show()` every loop |
-| `Outputs/PanelOutput.h/.cpp` | `PanelOutput` | The `Output` for the HUB75 panels: it cuts each Screen into 32-row slices, one per panel, turned when `ROTATED_180` says so. Panel 0 is plugged into the board, panel 1 into panel 0. Its `Begin()` refuses a Screen of the wrong size, past the end of the chain, or on a panel already used. Enigmas never talk to the panels |
+| `Board1/main.cpp` | | Creates and connects every object, `setup()`, `loop()`, the links (`Serial2` to board 2, `Serial1` to board 3) |
+| `Board1/Config.h` | | `GameTuning`, `EndTuning`, `Texts`, `SnakeTuning`, `InvadersTuning`, `LightTuning`, `StationTuning`, `Panels`, `Pins` |
+| `Board1/Core/GameManager` | `GameManager` | The bomb rules: timer start, VICTOIRE, BOOM, freeze, global reset |
+| `Board1/Core/BombDisplay` | `BombDisplay` | Draws VICTOIRE, the BOOM animation and the RESET bar over the enigmas |
+| `Board1/Core/Countdown` | `Countdown` | The bomb timer: `Reset()` fills and stops it, `Start()`, `Stop()` |
+| `Board1/Core/BombCode` | `BombCode` | The secret of enigma 1: the plug of each cable, the order of the snake levels |
+| `Board1/Core/Palette.h` | | The panel colors |
+| `Board1/Enigma/Enigma.h` | `Enigma` | Base of every enigma: `Start()` resets it, `Update()` returns `None`, `Mistake` or `Solved`, `Draw()` |
+| `Board1/Enigma/EnigmaStation` | `EnigmaStation` | One enigma with its Start/Reset button, LED state (`GetLedState()`) and texts (DEPART + timer, RATE, DESAMORCE) |
+| `Board1/Enigma/SnakeEnigma`, `CableEnigma`, `SnakeCablesEnigma` | `SnakeEnigma`, `CableEnigma`, `SnakeCablesEnigma` | Enigma 1: the snake, the cables, and both in a row |
+| `Board1/Enigma/InvadersEnigma` | `InvadersEnigma` | Enigma 2, Space Invaders |
+| `Board1/Enigma/LightEnigma` | `LightEnigma` | Enigma 3, the light holes; computes the grid LEDs |
+| `Board1/Outputs/` | `Screen`, `PanelOutput` | A `Screen` is a picture in memory (Adafruit GFX) covering whole panels; `DrawCenteredText()` without a top writes the text once per panel, never across two. `PanelOutput` shows the Screens on the panels; refuses a Screen of the wrong size or on a used panel |
+| `Board2/main.cpp`, `Microphone.h`, `Config.h` | `Microphone` | Board 2: detects a loud sound on each microphone, sends it with the button |
+| `Board3/main.cpp`, `Config.h` | | Board 3: sends the light values and the button, lights the grid and the status LED |
+| `Common/Config.h` | | `LinkTuning`, `StatusLight`, `PinCheck` (the pin checks) |
+| `Common/Inputs/` | `Sensor`, `Button`, `PinButton`, `RemoteButton`, `CablePanel`, `InputManager` | A `PinButton` given a max press time (the snake Start/Reset) only counts short presses; a `RemoteButton` is on board 2 or 3 |
+| `Common/Outputs/` | `StatusLed`, `LedState` | `LedState` (off, blinking, on, fast blinking) is what a status LED shows, also sent to boards 2 and 3 |
+| `Common/Messages/` | `Enigma2...Message`, `Enigma3...Message`, `MessageReader` | The messages between the boards; `MessageLink` sends them, `MessageReader` reads them, empties them after 500 ms of silence and tells whether the board is silent (`IsLinked()`) |
 
-## Add a new enigma
-
-Today there is one program (env `cube`, board A). Until there is one env per board, write and test a new enigma here, on its own panel.
-Its class files (`Enigma/...`) will move unchanged to its board's program.
-
-1. **The class**: create `Enigma/MyEnigma.h` (and a `.cpp`, like `SnakeEnigma`). It derives from `Enigma` (`class MyEnigma : public Enigma`) and fills in
-   `Start()` (reset), `Update()` (one loop; returns `EnigmaEvent::None`, `Mistake` or `Solved`) and `Draw()`. No penalty: on a `Mistake`, `loop()` only prints a message.
-2. **Inputs**: add its pin constant and its `static_assert` line at the end of the block `Pins` in `Config.h`. Create a `PinButton` in `main.cpp`, and
-   `inputs.Add()` it in `setup()` before `inputs.Begin()`. A new kind of sensor (microphone, light) is a class derived from `Sensor`, like `PinButton`.
-3. **Picture**: create a `Screen` on a free panel (its last argument is its first panel), `output.AddScreen()` it before `output.Begin()`, raise
-   `PANEL_COUNT`, and set the new panel's `ROTATED_180` value. Two Screens on one panel stop the board at boot (see the monitor).
-4. **Run it**: create the enigma in `main.cpp` and `Start()` it in `setup()`. In `loop()`, before `output.Show()`: `Update(now)` (react to its event),
-   clear its Screen, `Draw(now)`.
-
-Example: an enigma solved by 3 presses, shown on a third panel (kept in one file to stay short).
-
-```cpp
-// Enigma/PressEnigma.h
-#pragma once
-#include "Enigma.h"
-#include "Core/Palette.h"
-#include "Inputs/Button.h"
-#include "Outputs/Screen.h"
-
-// Example enigma: press the button 3 times to solve it.
-class PressEnigma : public Enigma {
-public:
-    PressEnigma(const Button &pressButton, Screen &pressScreen) : button(pressButton), screen(pressScreen) {}
-
-    void Start(uint32_t) override { presses = 0; }
-
-    EnigmaEvent Update(uint32_t) override {
-        if (!button.WasPressed()) {
-            return EnigmaEvent::None;
-        }
-        presses++;
-        return presses == PRESSES_TO_SOLVE ? EnigmaEvent::Solved : EnigmaEvent::None;
-    }
-
-    void Draw(uint32_t) override { screen.fillRect(0, 0, presses * 8, 8, Palette::GREEN); }
-
-private:
-    static constexpr int PRESSES_TO_SOLVE = 3;
-    const Button &button;
-    Screen &screen;
-    int presses = 0;
-};
-
-// Config.h: PANEL_COUNT = 3 in block Panels, and at the end of block Pins (before its closing }):
-constexpr uint8_t PRESS_BUTTON = 1;
-static_assert(!IsReservedPin(PRESS_BUTTON), "PRESS_BUTTON is on a reserved pin");
-
-// main.cpp: #include "Enigma/PressEnigma.h" at the top, then next to the other objects:
-PinButton pressButton(Pins::PRESS_BUTTON);
-Screen pressScreen(Panels::PANEL_WIDTH, Panels::PANEL_HEIGHT, 2);
-PressEnigma press(pressButton, pressScreen);
-
-// main.cpp, setup(): add each "new" line right after the existing line above it.
-    output.AddScreen(snakeScreen);
-    output.AddScreen(pressScreen);  // new, before output.Begin()
-    inputs.Add(rightButton);
-    inputs.Add(pressButton);        // new, before inputs.Begin()
-    snake.Start(millis());
-    press.Start(millis());          // new
-
-// main.cpp, loop(): add these lines between snake.Draw(now); and output.Show();
-    if (press.Update(now) == EnigmaEvent::Solved) {
-        Serial.println("Press solved!");
-    }
-    pressScreen.fillScreen(Palette::BLACK);
-    press.Draw(now);
-```
-
-Reading it: `: public Enigma` = "is an enigma"; `override` = "this enigma's own version of `Start`/`Update`/`Draw`"; `&` = "uses the existing object,
-not a copy"; `uint32_t` = a positive whole number (here, the time in ms, left unnamed when unused). Nothing restarts `press` after its win.
+**Add an enigma:** derive a class from `Enigma` in `Board1/Enigma/`; in `Board1/main.cpp`, create it with its button
+and `EnigmaStation`, then in `setup()` call `inputs.Add()`, `station.AddScreen()` and `game.AddStation()`. Its status
+LED shows `station.GetLedState()`: a `StatusLed` on board 1 (like `snakeLed` in `loop()`), or a field of a message.
 
 ## Wiring
 
-A GPIO (or pin) is a numbered leg of the board. Pins take 3.3 V only: never put 5 V on a pin.
+A GPIO (pin) is a numbered leg of the board. Pins take 3.3 V only: never 5 V. **Buttons** go between their pin and GND
+(internal pull-up). **LEDs** go from their pin, through a 220 ohm resistor, to GND. To move a wire, change its number in
+`Pins` of that board's `Config.h` (a new pin also goes in `USED_PINS`): the build refuses a pin used twice, a reserved
+one (USB 19-20, flash and PSRAM 26-37, COM port 43-44) or, on board 1, a panel pin.
 
-- **Panels**: GPIO 3 to 10, 15 to 18 and 46 (`Pins::HUB75` in `Config.h` says which signal goes where). **Never wire anything else
-  to them**: it breaks the display. A compile-time check (`static_assert` in `Config.h`) refuses a button on a reserved pin
-  (panels, USB 19-20, and 35-37, used by the board's extra memory, the PSRAM): add one line per new pin.
-- **Buttons**: each one between its pin and GND. Left: GPIO 41, right: GPIO 42. GPIO 13 is kept for the Start button.
-- **Free for new buttons**: GPIO 1, 2, 11, 12, 14, 21, 39, 40, 47. An analog sensor (microphone, light sensor) goes on 1 or 2.
-- Also avoid GPIO 0 and 45 (boot), 43-44 (wired to the "COM" port chip), and 38 and 48 (the board's RGB LED, depending on the board version).
-- **Power**: the panels get their own 5 V supply; connect its GND to a GND pin of the board. **USB**: plug the port labelled "USB", not "COM".
+**Board 1** (`board-a`)
+
+| What | GPIO |
+|---|---|
+| Panel 0 input (HUB75): R1 G1 B1 / R2 G2 B2 | 4 5 6 / 7 15 16 |
+| Panel 0 input: A B C D / LAT OE CLK (E not wired) | 17 18 8 3 / 46 10 9 |
+| Snake turn left / right (button to GND) | 41 / 42 |
+| Snake Start/Reset, and global reset held 8 s (button to GND) | 40 |
+| Snake status LED | 39 |
+| Cables 0 / 1 / 2 (red / green / blue on the snake screen) | 11 / 12 / 13 |
+| Plugs 0 / 1 / 2 (green / blue / yellow on the snake screen) | 48 / 47 / 45 |
+| Link to board 2: TX / RX | 21 / 1 |
+| Link to board 3: TX / RX | 14 / 2 |
+
+**Never wire anything else to the panel pins**: it breaks the display. Panel chain: board 1 -> panel 0 (top of the
+snake) -> panel 1 (bottom of the snake, upside down) -> panel 2 (guide) -> panel 3 (singer, upside down). A cable joins
+its cable pin to a plug pin.
+
+**Board 2** (`board-b`)
+
+| What | GPIO |
+|---|---|
+| Left / right microphone AO (on both: G to GND, + to 3.3 V, DO not connected) | 13 / 14 |
+| Invaders Start/Reset (button to GND) | 4 |
+| Invaders status LED | 12 |
+| Link to board 1: TX / RX | 1 / 21 |
+
+**Board 3** (`board-c`). Each hole: a photoresistor from 3.3 V to its sensor pin, a 10 kohm resistor from that pin to
+GND (more light must give a higher value), and an LED on its LED pin. Start/Reset: GPIO 39 (button to GND). Status LED:
+GPIO 9. Link to board 1: TX 21 / RX 13.
+
+| Hole: sensor / LED GPIO | Left | Middle | Right |
+|---|---|---|---|
+| Top | 0: 18 / 42 | 1: 16 / 2 | 2: 8 / 1 |
+| Middle | 3: 5 / 41 | 4: 15 / 40 | 5: 6 / 47 |
+| Bottom | 6: 7 / 12 | 7: 4 / 11 | 8: 17 / 10 |
+
+**Serial links** (a TX always goes to the other board's RX):
+
+| Wire | From | To |
+|---|---|---|
+| Board 1 to board 2 | board 1 GPIO 21 (TX) | board 2 GPIO 21 (RX) |
+| Board 2 to board 1 | board 2 GPIO 1 (TX) | board 1 GPIO 1 (RX) |
+| Board 1 to board 3 | board 1 GPIO 14 (TX) | board 3 GPIO 13 (RX) |
+| Board 3 to board 1 | board 3 GPIO 21 (TX) | board 1 GPIO 2 (RX) |
+| Common ground | a GND of board 1 | a GND of board 2 and a GND of board 3 |
+
+**Power:** the panels get their own 5 V supply; connect its GND to a GND of board 1. **USB:** plug the port labelled
+"USB", not "COM" (the monitor only works there).
 
 ## Build and upload
 
-### Board2 sound sensor
+The project is the `firmware/` folder (CLion or VS Code with PlatformIO, or a terminal). The first build downloads the
+libraries (a few minutes). Close the monitor before an upload. Upload stuck: hold BOOT, press RST, release BOOT, retry.
 
-Connect the left sensor's **AO to GPIO 13** (`Pins::INPUT_LEFT_MICRO_ANALOG`) and the right sensor's
-**AO to GPIO 14** (`Pins::INPUT_RIGHT_MICRO_ANALOG`). On both sensors, connect **G to GND** and **+ to 3.3 V**;
-leave DO disconnected.
-`Microphone` in `Board2/Microphone.h` handles each sensor independently: construct with `(pin)`,
-call `Begin()` in setup and `Update()` every loop.
-`Detected()` returns the current detection state. Both instances share sensitivity settings but have separate
-background estimates and timers.
-Build from `firmware/` with `pio run -e board-b`, then upload with `pio run -e board-b -t upload`.
-Open the USB serial monitor at 115200 baud (`pio device monitor -b 115200`; select Board2's port if needed).
+- **Always pick the env and the port:** `pio run -e board-a -t upload --upload-port COM5`, then
+  `pio device monitor -b 115200 -p COM5`. `pio device list` shows the ports; plug one board at a time to tell them
+  apart.
+- **Never upload without an env:** `pio run -t upload` (or the project-wide Upload in the IDE) uploads the 3 programs
+  one after the other to the same board, and the last one (`board-c`) stays. `pio run` alone only builds the 3: fine.
+- **After a change in `Common/`** (messages, LED states, links), upload all 3 boards: they must share the same messages.
+- The images are for the ESP32-S3 DevKitC N16R8 only (16 MB flash, 8 MB PSRAM); a Super Mini reboots in a loop.
+- Keep the repo in a short folder outside OneDrive (like `F:\C++\cube-bombe`): long paths break the panel library build.
 
-Board2 samples AO at a target 4 kHz without blocking and computes RMS after removing the mean over 50 ms windows.
-At startup, leave the usual background noise present but do not shout for two seconds (detection stays false during calibration).
-The threshold is the larger of background times `NOISE_RATIO` (2) and background plus `MIN_MARGIN` (15 RMS ADC counts).
-Two consecutive loud windows trigger detection; five windows below a lower release threshold clear it.
-The background estimate slowly follows ambient changes when no shout is being detected or confirmed.
-Levels are relative RMS values, not decibels or the old instantaneous values around 400.
-Lower `NOISE_RATIO`/`MIN_MARGIN` in `Board2/Config.h` if a loud sound
-near the microphone does not trigger; raise them if ambient sounds trigger. Defaults require testing at the intended distance.
-Test silence, nearby player sounds, a brief clap, and the expected background noise. Two consecutive 50 ms windows
-above threshold trigger detection; an isolated loud window does not. Test release after stopping as well.
-This detects sustained loud sound, not human voices specifically. A sudden, sustained increase in ambient noise
-can trigger and keep detection active; restart in the new ambient noise to recalibrate. Clipping or a shout masked
-by background noise cannot be corrected by this detector alone.
-The reset button and both microphone detection states are sent to Board1 every 50 ms.
-
-### General build instructions
-
-PlatformIO builds the firmware and uploads it to the board. The project is the `firmware/` folder, with one env (build setup): `cube`.
-The first build downloads the libraries (a few minutes). Close the monitor before an upload. Upload stuck: hold BOOT, press RST, release BOOT, retry.
-- **VS Code** (PlatformIO extension): PlatformIO icon in the left bar > Project Tasks > cube > General > Upload, then Monitor.
-- **CLion** (PlatformIO plugin, with PlatformIO Core installed): PlatformIO tool window > cube > Upload, then Monitor.
-- **Terminal** opened in `firmware/`: `pio run -e cube -t upload`, then `pio device monitor` (115200 baud). `pio run -e cube` only builds.
-
-| Serial monitor message | Meaning |
+| Monitor line | Meaning |
 |---|---|
-| `Bomb cube - snake` | the board and the panels started |
-| `Output failed to start: stopped` | the panels did not start; the `PanelOutput: ...` line just before says why |
-| `InputManager: too many sensors, increase MAX_SENSORS` | more than 16 sensors added, the extra ones are ignored: raise `MAX_SENSORS` in `Inputs/InputManager.h` |
-| `Output: too many screens, increase MAX_SCREENS` | more than 6 Screens added, the extra ones are ignored: raise `MAX_SCREENS` in `Outputs/Output.h` |
+| `Bomb cube - board 1` / `ESP32 - Board B - Initialized.` / `Bomb cube - board 3 (light sensors)` | Which program the board runs |
+| `Panels failed to start: ...` | Board 1: the panels did not start; the end says why |
+| `Game: waiting`, `running`, `defused`, `exploded`, `global reset` | The game changed state |
+| `Snake: start`, `reset`, `mistake`, `solved!` (same for `Invaders`, `Light`) | A station changed state |
+| `Code: levels ..., plugs ...` / `Snake done: plug the cables` / `Cable 0 -> plug 2` | Enigma 1: new secret, cables step, a cable moved (`-1` = unplugged) |
+| `Alien hit: 5 killed` / `Alien landed: kill counter back to 0` | Enigma 2 |
+| `Light: pattern ...` | Enigma 3: the holes to cover, drawn with `X` |
 
-- The `cube` image is for the ESP32-S3 DevKitC N16R8 only (16 MB flash, 8 MB PSRAM); a Super Mini reboots in a loop. The build banner's
-  `ESP32-S3-DevKitC-1-N8 (8 MB QD, No PSRAM)` is only the board's default name: `platformio.ini` sets 16 MB flash and the PSRAM.
-- Keep the repo in a short folder outside OneDrive (like `F:\C++\cube-bombe`): in a deep folder, Windows path limits break the panel library build.
+## Before each game (staff)
 
-## Status
+1. **Unplug the 3 cables.** Otherwise the cables left from the last game may already match the new code, and enigma 1
+   solves itself right after the snake.
+2. The light holes can stay as they are: a hole covered at Start counts as open until it has seen light once.
+3. Hold the snake Start/Reset 8 s (or press RST on board 1). Check: "DEPART" and 5:00 on panels 0, 2 and 3, the middle
+   grid LED blinks, status LEDs off, and nothing red on panel 1 (CARTE 2 / CARTE 3 = that board is silent: wire, GND or
+   upload).
+4. Board 2 learns the room's noise in its first 2 s after power-on: no shouting near the microphones then.
+5. If the 5-minute music plays next to the cube, start it on the players' first Start.
 
-- **Written, not wired yet**: `GameManager` (written for older rules: enigmas one after the other, a time penalty per mistake; to be rewritten),
-  `Countdown` and the `Timing` values (only `GameManager` uses them), and the Start button (GPIO 13).
-- **Next**: one env per board: A (snake, then cables), B (Space Invaders with the voice, global timer, big button), C (light). Per enigma: a Start/Reset
-  button, a status LED (off, orange = running, green = solved), and a "solved" wire from boards A and C to board B. Enigma 1 as designed: 3 levels
-  (the snake colored like a cable, the apple like a plug), then the cables phase, and a queue of 2 turns so two quick presses give two quarter turns.
+## To check on the cube
+
+- The BOOM white flash lights the 4 panels at once: check the 5 V supply holds (set `GAME_DURATION_MS` to 20 s to test).
+- The microphones with the music playing: tune `NOISE_RATIO`, `MIN_MARGIN` and `MAX_HOLD_MS`.
+- The light: if the room light changes a lot, press the light Start/Reset twice (reset, then start) to measure again (it
+  also draws a new pattern).

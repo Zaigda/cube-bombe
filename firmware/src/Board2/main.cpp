@@ -14,15 +14,9 @@ Microphone rightMicrophone(Pins::INPUT_RIGHT_MICRO_ANALOG);
 MessageReader<Enigma2OutputMessage> boardAReader;
 Enigma2OutputMessage boardA = {};
 uint32_t lastSendMs = 0;
-uint32_t lastRecievedMs = 0;
 
 void ReceiveFromBoardA(uint32_t now) {
-    if (boardAReader.Read(Serial2, boardA)) {
-        lastRecievedMs = now;
-    }
-    if (now - lastRecievedMs >= LinkTuning::TIMEOUT_MS) {
-        boardA = {};
-    }
+    boardAReader.Receive(Serial2, boardA, now);
     gameStateLed.Set(boardA.ledState);
 }
 

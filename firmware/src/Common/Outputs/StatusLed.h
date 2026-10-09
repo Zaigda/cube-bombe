@@ -1,17 +1,18 @@
 #pragma once
+#include "LedState.h"
 
-#include "Led.h"
-
-// A single LED between a pin and GND (through a resistor): Off, Blinking (BLINK_MS) or On.
-class StatusLed : public Led {
+// A single LED between a pin and GND (through a resistor) that shows a LedState. IsLit() is the blinking rule.
+class StatusLed {
 public:
     explicit StatusLed(uint8_t ledPin);
 
-    void Begin() override;
+    static bool IsLit(LedState state, uint32_t now);
 
-    void Set(LedState newState) override;
+    void Begin();
 
-    void Update(uint32_t now) override;
+    void Set(LedState newState);
+
+    void Update(uint32_t now);
 
 private:
     uint8_t pin;

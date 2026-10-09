@@ -4,7 +4,8 @@
 #include <cmath>
 #include "Config.h"
 
-// Measures AC energy, removing the microphone's DC offset (e.g. 400 at rest).
+// Measures AC energy, removing the microphone's DC offset (e.g. 400 at rest). A sound detected for MAX_HOLD_MS
+// is a lasting noise (e.g. music started after power-on): detection is released and the background learned again.
 class Microphone {
 public:
     explicit Microphone(uint8_t analogPin) : pin(analogPin) {}
@@ -44,12 +45,18 @@ public:
             return;
         }
 
+        if (detected && now - detectedMs >= SoundTuning::MAX_HOLD_MS) {
+            RelearnBackground();
+            return;
+        }
+
         const float threshold = std::max(background * SoundTuning::NOISE_RATIO,
                                          background + SoundTuning::MIN_MARGIN);
         if (!detected) {
             attack = level >= threshold ? attack + 1 : 0;
             if (attack >= SoundTuning::ATTACK_WINDOWS) {
                 detected = true;
+                detectedMs = now;
                 release = 0;
             }
         } else {
@@ -61,15 +68,25 @@ public:
             }
         }
 
-        // Follow gradual ambient changes, but do not learn a candidate shout as noise.
+        FollowQuietBackground();
+    }
+
+private:
+    void FollowQuietBackground() {
         if (!detected && attack == 0) {
             background += 0.02f * (level - background);
         }
     }
 
-private:
+    void RelearnBackground() {
+        detected = false;
+        attack = 0;
+        release = 0;
+        calibrationWindows = 0;
+    }
+
     uint8_t pin;
-    uint32_t lastSampleUs = 0, lastWindowMs = 0;
+    uint32_t lastSampleUs = 0, lastWindowMs = 0, detectedMs = 0;
     uint32_t samples = 0, calibrationWindows = 0;
     float mean = 0, squaredDeviation = 0, background = 0, level = 0;
     uint8_t attack = 0, release = 0;

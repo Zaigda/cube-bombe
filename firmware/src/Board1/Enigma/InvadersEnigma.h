@@ -1,7 +1,7 @@
 #pragma once
 #include "Enigma.h"
+#include "Board1/Outputs/Screen.h"
 #include "Common/Inputs/Button.h"
-#include "Common/Outputs/Screen.h"
 
 // A shot going up; y is its top LED.
 struct Bullet {
@@ -10,7 +10,7 @@ struct Bullet {
     bool active;
 };
 
-// Enigma 2: the singer moves a ship by shouting left or right; only the guide sees the aliens.
+// Enigma 2: the singer moves the ship by voice, only the guide sees the aliens. A landed alien is a mistake.
 class InvadersEnigma : public Enigma {
 public:
     InvadersEnigma(const Button &leftButton, const Button &rightButton, Screen &guideScreen, Screen &singerScreen);
@@ -21,9 +21,9 @@ public:
 
     void Draw(uint32_t now) override;
 
-    uint16_t GetSoundHz(uint32_t now) const;
-
 private:
+    void RestartWave();
+
     void MoveShip(uint32_t now);
 
     void Fire(uint32_t now);
@@ -32,13 +32,13 @@ private:
 
     void MoveAlien(uint32_t now);
 
-    void ReplayNote(uint32_t now);
-
     void CheckHits(uint32_t now);
 
     void SpawnAlien(uint32_t now);
 
-    bool IsAlienVisible(uint32_t now) const;
+    bool HasAlienLanded() const;
+
+    void DrawKillCounter(Screen &screen, uint16_t color) const;
 
     void DrawShip(Screen &screen) const;
 
@@ -59,11 +59,9 @@ private:
     int alienX = 0;
     int alienY = 0;
     uint32_t lastAlienMoveMs = 0;
-    uint32_t alienSpawnMs = 0;
     bool alienWaiting = true;
-    int alienColumn = 0;
-    uint32_t lastNoteMs = 0;
-    uint32_t nextReplayMs = 0;
     int aliensKilled = 0;
-    int lives = 0;
+    uint32_t lastHitMs = 0;
+    int hitX = 0;
+    int hitY = 0;
 };

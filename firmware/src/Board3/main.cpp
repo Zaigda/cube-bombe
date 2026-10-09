@@ -3,10 +3,12 @@
 #include "Common/Config.h"
 #include "Common/Messages/Enigma3Message.h"
 #include "Common/Messages/MessageLink.h"
+#include "Common/Outputs/StatusLed.h"
+
+StatusLed statusLed(Pins::STATUS_LED);
 
 MessageReader<Enigma3OutputMessage> boardAReader;
 Enigma3OutputMessage boardA = {};
-uint32_t lastBoardAMs = 0;
 uint32_t lastSendMs = 0;
 
 uint16_t ReadLight(uint8_t pin) {
@@ -27,15 +29,11 @@ void SendSensors() {
 }
 
 void ShowLeds(uint32_t now) {
-    if (now - lastBoardAMs >= LinkTuning::TIMEOUT_MS) {
-        boardA = {};
-    }
     for (uint8_t i = 0; i < LIGHT_SENSOR_COUNT; i++) {
         digitalWrite(Pins::GRID_LEDS[i], (boardA.ledMask >> i) & 1 ? HIGH : LOW);
     }
-    const bool blinkOn = (now / StatusLight::BLINK_MS) % 2 == 0;
-    const bool statusOn = boardA.ledState == 2 || (boardA.ledState == 1 && blinkOn);
-    digitalWrite(Pins::STATUS_LED, statusOn ? HIGH : LOW);
+    statusLed.Set(boardA.ledState);
+    statusLed.Update(now);
 }
 
 void setup() {
@@ -45,7 +43,7 @@ void setup() {
     analogReadResolution(12);
     analogSetAttenuation(ADC_11db);
     pinMode(Pins::START_BUTTON, INPUT_PULLUP);
-    pinMode(Pins::STATUS_LED, OUTPUT);
+    statusLed.Begin();
     for (uint8_t pin : Pins::GRID_LEDS) {
         pinMode(pin, OUTPUT);
     }
@@ -55,9 +53,7 @@ void setup() {
 void loop() {
     const uint32_t now = millis();
 
-    if (boardAReader.Read(Serial2, boardA)) {
-        lastBoardAMs = now;
-    }
+    boardAReader.Receive(Serial2, boardA, now);
     ShowLeds(now);
 
     if (now - lastSendMs >= LinkTuning::SEND_MS) {

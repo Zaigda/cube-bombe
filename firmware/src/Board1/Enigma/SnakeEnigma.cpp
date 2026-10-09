@@ -51,7 +51,7 @@ void SnakeEnigma::Start(uint32_t now) {
     }
 
     direction = Direction::Right;
-    nextDirection = Direction::Right;
+    queuedTurnCount = 0;
     lastStepMs = now;
 
     applesEaten = 0;
@@ -66,7 +66,7 @@ EnigmaEvent SnakeEnigma::Update(uint32_t now) {
         return EnigmaEvent::None;
     }
     lastStepMs = now;
-    direction = nextDirection;
+    ApplyNextTurn();
 
     const Cell next = NextHead();
     const bool growing = length < targetLength;
@@ -114,11 +114,35 @@ void SnakeEnigma::Draw(uint32_t now) {
 
 void SnakeEnigma::ReadTurns() {
     if (turnLeftButton.WasPressed()) {
-        nextDirection = TurnLeft(direction);
+        QueueTurn(Turn::Left);
     }
     if (turnRightButton.WasPressed()) {
-        nextDirection = TurnRight(direction);
+        QueueTurn(Turn::Right);
     }
+}
+
+void SnakeEnigma::QueueTurn(Turn turn) {
+    if (queuedTurnCount < SnakeTuning::TURN_QUEUE_SIZE) {
+        queuedTurns[queuedTurnCount] = turn;
+        queuedTurnCount++;
+    }
+}
+
+void SnakeEnigma::ApplyNextTurn() {
+    if (queuedTurnCount == 0) {
+        return;
+    }
+
+    if (queuedTurns[0] == Turn::Left) {
+        direction = TurnLeft(direction);
+    } else {
+        direction = TurnRight(direction);
+    }
+
+    for (int i = 1; i < queuedTurnCount; i++) {
+        queuedTurns[i - 1] = queuedTurns[i];
+    }
+    queuedTurnCount--;
 }
 
 Cell SnakeEnigma::NextHead() const {
