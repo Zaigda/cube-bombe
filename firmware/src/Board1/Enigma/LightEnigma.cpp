@@ -26,11 +26,11 @@ EnigmaEvent LightEnigma::Update(uint32_t) {
     ledMask = 0;
     for (int hole = 0; hole < LightTuning::HOLE_COUNT; hole++) {
         const bool covered = IsCovered(hole);
-        const bool inPattern = LightTuning::PATTERNS[pattern][hole];
+        const bool inPattern = LightTuning::PATTERNS[pattern][LightTuning::LED_OF_SENSOR[hole]];
         if (covered) {
             coveredCount++;
         }
-        if (covered && inPattern) {
+        if (covered && (inPattern || LightTuning::SHOW_ALL_COVERED)) {
             ledMask |= 1 << hole;
         }
         if (covered != inPattern) {
@@ -38,7 +38,7 @@ EnigmaEvent LightEnigma::Update(uint32_t) {
         }
     }
 
-    if (coveredCount == LightTuning::HOLE_COUNT) {
+    if (coveredCount == LightTuning::HOLE_COUNT && !LightTuning::SHOW_ALL_COVERED) {
         ledMask = 0;
     }
     return matches ? EnigmaEvent::Solved : EnigmaEvent::None;

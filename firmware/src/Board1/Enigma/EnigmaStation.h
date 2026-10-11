@@ -35,6 +35,8 @@ public:
 
     static bool IsFinalAlarmLit(uint32_t now);
 
+    static void DrawProgress(Screen &screen, uint16_t color, int16_t top);
+
 private:
     enum class Phase : uint8_t { Paused, Playing, Failed, Solved };
 
@@ -47,6 +49,11 @@ private:
     void DrawTimer(Screen &screen, uint32_t now) const;
 
     void DrawFinalAlarm(Screen &screen, uint32_t now) const;
+
+    void DrawSolved(Screen &screen, uint16_t color) const;
+
+    static uint8_t stationTotal;
+    static uint8_t solvedTotal;
 
     static constexpr uint8_t MAX_SCREENS = 2;
 

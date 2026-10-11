@@ -6,10 +6,10 @@
 // GPIO numbers of board 2. Avoid 0 (BOOT button). The checks below refuse USB, flash, PSRAM and COM port pins.
 namespace Pins {
     constexpr uint8_t LINK_RX = 21;
-    constexpr uint8_t LINK_TX = 1;
+    constexpr uint8_t LINK_TX = 47;
     constexpr uint8_t INPUT_LEFT_MICRO_ANALOG = 13;
     constexpr uint8_t INPUT_RIGHT_MICRO_ANALOG = 14;
-    constexpr uint8_t INPUT_RESET_BUTTON = 4;
+    constexpr uint8_t INPUT_RESET_BUTTON = 11;
     constexpr uint8_t OUTPUT_GAME_STATE_LED = 12;
 
     // Every pin above: a new pin goes here too, so that the checks below see it.

@@ -96,7 +96,14 @@ void InvadersEnigma::MoveShip(uint32_t now) {
 
     const int minX = InvadersTuning::SIDE_MARGIN;
     const int maxX = guide.width() - InvadersTuning::SIDE_MARGIN - InvadersTuning::SHIP_WIDTH;
-    shipX = constrain(shipX + (left ? -1 : 1), minX, maxX);
+    const int nextX = shipX + (left ? -1 : 1);
+    if (InvadersTuning::WRAP_AROUND && nextX < minX) {
+        shipX = maxX;
+    } else if (InvadersTuning::WRAP_AROUND && nextX > maxX) {
+        shipX = minX;
+    } else {
+        shipX = constrain(nextX, minX, maxX);
+    }
 }
 
 void InvadersEnigma::Fire(uint32_t now) {

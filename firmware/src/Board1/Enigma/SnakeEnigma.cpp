@@ -98,7 +98,9 @@ void SnakeEnigma::Draw(uint32_t now) {
     }
 
     const int cable = code.GetLevelCable(applesEaten);
-    screen.fillRect(apple.x * size, apple.y * size, size, size, code.GetPlugColor(code.GetPlug(cable)));
+    const int appleOffset = (SnakeTuning::APPLE_SIZE - size) / 2;
+    screen.fillRect(apple.x * size - appleOffset, apple.y * size - appleOffset, SnakeTuning::APPLE_SIZE,
+                    SnakeTuning::APPLE_SIZE, code.GetPlugColor(code.GetPlug(cable)));
 
     for (int i = length - 1; i > 0; i--) {
         screen.fillRect(body[i].x * size, body[i].y * size, size, size, code.GetCableColor(cable));

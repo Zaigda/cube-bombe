@@ -3,6 +3,9 @@
 #include "Board1/Config.h"
 #include "Board1/Core/Palette.h"
 
+uint8_t EnigmaStation::stationTotal = 0;
+uint8_t EnigmaStation::solvedTotal = 0;
+
 static uint16_t GetPulseColor(uint32_t now) {
     const uint32_t halfMs = GameTuning::PULSE_MS / 2;
     const uint32_t cycleMs = now % GameTuning::PULSE_MS;
@@ -15,6 +18,7 @@ static uint16_t GetPulseColor(uint32_t now) {
 EnigmaStation::EnigmaStation(const char *stationName, Enigma &stationEnigma, const Button &startButton,
                              const Countdown &bombTimer)
     : name(stationName), enigma(stationEnigma), start(startButton), timer(bombTimer) {
+    stationTotal++;
 }
 
 void EnigmaStation::AddScreen(Screen &screen) {
@@ -43,6 +47,9 @@ void EnigmaStation::Draw(uint32_t now) {
 }
 
 void EnigmaStation::Reset(uint32_t now) {
+    if (phase == Phase::Solved) {
+        solvedTotal--;
+    }
     enigma.Start(now);
     ledState = LedState::Off;
     phase = Phase::Paused;
@@ -105,6 +112,7 @@ void EnigmaStation::UpdateEnigma(uint32_t now) {
             ledState = LedState::On;
             solvedMs = now;
             phase = Phase::Solved;
+            solvedTotal++;
         }
     } else if (phase == Phase::Failed && now - failedMs >= StationTuning::FAIL_MS) {
         phase = Phase::Playing;
@@ -113,11 +121,13 @@ void EnigmaStation::UpdateEnigma(uint32_t now) {
 
 void EnigmaStation::DrawTexts(Screen &screen, uint32_t now) const {
     switch (phase) {
-        case Phase::Paused:
-            screen.DrawCenteredText(Texts::START, start.IsDown() ? Palette::GREEN : GetPulseColor(now),
-                                    StationTuning::START_TEXT_TOP);
+        case Phase::Paused: {
+            const uint16_t color = start.IsDown() ? Palette::GREEN : GetPulseColor(now);
+            screen.DrawCenteredText(Texts::START, color, StationTuning::WAITING_TEXT_TOP);
             DrawTimer(screen, now);
+            DrawProgress(screen, Palette::GREEN, StationTuning::PROGRESS_TEXT_TOP);
             break;
+        }
         case Phase::Playing:
             break;
         case Phase::Failed:
@@ -129,9 +139,9 @@ void EnigmaStation::DrawTexts(Screen &screen, uint32_t now) const {
         case Phase::Solved:
             if (now - solvedMs < StationTuning::SOLVED_FLASH_MS) {
                 screen.fillScreen(Palette::GREEN);
-                screen.DrawCenteredText(Texts::SOLVED, Palette::BLACK);
+                DrawSolved(screen, Palette::BLACK);
             } else {
-                screen.DrawCenteredText(Texts::SOLVED, Palette::GREEN);
+                DrawSolved(screen, Palette::GREEN);
             }
             break;
     }
@@ -142,8 +152,21 @@ void EnigmaStation::DrawTimer(Screen &screen, uint32_t now) const {
     const uint32_t remainingMs = timer.GetRemainingMs(now);
     const uint16_t color = remainingMs < GameTuning::FINAL_WARNING_MS ? Palette::RED : StationTuning::TIMER_COLOR;
     screen.setTextSize(StationTuning::TIMER_TEXT_SIZE);
-    screen.DrawCenteredTime(remainingMs, color, StationTuning::TIMER_TEXT_TOP);
+    screen.DrawCenteredTime(remainingMs, color, StationTuning::WAITING_TIMER_TOP);
     screen.setTextSize(1);
+}
+
+void EnigmaStation::DrawSolved(Screen &screen, uint16_t color) const {
+    const int16_t top = (screen.height() - 3 * StationTuning::TEXT_LINE) / 2;
+    screen.DrawCenteredText(Texts::SOLVED, color, top);
+    screen.DrawCenteredText(Texts::SOLVED_LINE_2, color, top + StationTuning::TEXT_LINE);
+    DrawProgress(screen, color, top + 2 * StationTuning::TEXT_LINE);
+}
+
+void EnigmaStation::DrawProgress(Screen &screen, uint16_t color, int16_t top) {
+    char progress[8];
+    snprintf(progress, sizeof(progress), "%u/%u", solvedTotal, stationTotal);
+    screen.DrawCenteredText(progress, color, top);
 }
 
 void EnigmaStation::DrawFinalAlarm(Screen &screen, uint32_t now) const {

@@ -72,12 +72,71 @@ void ReceiveFromBoardB(uint32_t now) {
     shipRightButton.SetDown(boardB.rightBtn);
 }
 
+uint16_t idleReference[LightTuning::HOLE_COUNT] = {};
+uint32_t lastIdleStepMs = 0;
+
+bool IsAnyHoleCovered(uint32_t now) {
+    if (!boardCReader.IsLinked(now)) {
+        return false;
+    }
+    const bool step = now - lastIdleStepMs >= LightTuning::IDLE_STEP_MS;
+    if (step) {
+        lastIdleStepMs = now;
+    }
+
+    bool covered = false;
+    for (int hole = 0; hole < LightTuning::HOLE_COUNT; hole++) {
+        const uint16_t value = boardC.light[hole];
+        if (value > idleReference[hole]) {
+            idleReference[hole] = value;
+        } else if (step) {
+            idleReference[hole] -= (idleReference[hole] - value) / LightTuning::IDLE_FOLLOW;
+        }
+        if (value * 100 < idleReference[hole] * LightTuning::COVERED_PERCENT) {
+            covered = true;
+        }
+    }
+    return covered;
+}
+
+bool IsPossible(const Enigma3InputMessage &message) {
+    uint8_t buttonByte = 0;
+    memcpy(&buttonByte, &message.resetBtn, 1);
+    if (buttonByte > 1) {
+        return false;
+    }
+    for (uint16_t value : message.light) {
+        if (value > LightTuning::MAX_LIGHT) {
+            return false;
+        }
+    }
+    return true;
+}
+
 void ReceiveFromBoardC(uint32_t now) {
-    boardCReader.Receive(Serial1, boardC, now);
-    lightStartButton.SetDown(boardC.resetBtn);
+    Enigma3InputMessage received = boardC;
+    boardCReader.Receive(Serial1, received, now);
+    if (IsPossible(received)) {
+        boardC = received;
+    }
+    const bool coveredToStart = !lightStation.IsStarted() && IsAnyHoleCovered(now);
+    lightStartButton.SetDown(boardC.resetBtn || coveredToStart);
+}
+
+uint16_t ToGridLeds(uint16_t sensorMask) {
+    uint16_t ledMask = 0;
+    for (int sensor = 0; sensor < LightTuning::HOLE_COUNT; sensor++) {
+        if ((sensorMask >> sensor) & 1) {
+            ledMask |= 1 << LightTuning::LED_OF_SENSOR[sensor];
+        }
+    }
+    return ledMask;
 }
 
 uint16_t GetGridMask(uint32_t now) {
+    if (LightTuning::TEST) {
+        return 1 << ((now / LightTuning::TEST_LED_MS) % LightTuning::HOLE_COUNT);
+    }
     if (game.GetState() == GameState::Defused) {
         const uint32_t step = now / EndTuning::CHASE_STEP_MS;
         return 1 << EndTuning::CHASE_ORDER[step % std::size(EndTuning::CHASE_ORDER)];
@@ -94,7 +153,26 @@ uint16_t GetGridMask(uint32_t now) {
     if (!lightStation.IsStarted()) {
         return now % GameTuning::PULSE_MS < GameTuning::PULSE_MS / 2 ? 1 << LightTuning::IDLE_LED : 0;
     }
-    return lightStation.IsPlaying() ? light.GetLedMask() : 0;
+    return lightStation.IsPlaying() ? ToGridLeds(light.GetLedMask()) : 0;
+}
+
+uint32_t lastLightTestMs = 0;
+
+void PrintLightTest(uint32_t now) {
+    if (!LightTuning::TEST || now - lastLightTestMs < LightTuning::TEST_PRINT_MS) {
+        return;
+    }
+    lastLightTestMs = now;
+
+    const int led = (now / LightTuning::TEST_LED_MS) % LightTuning::HOLE_COUNT;
+    Serial.printf("Light test: board 3 %s, LED %d should be on. Sensors:\n",
+                  boardCReader.IsLinked(now) ? "linked" : "NOT LINKED", led);
+    for (int hole = 0; hole < LightTuning::HOLE_COUNT; hole++) {
+        Serial.printf("  %d=%4u", hole, boardC.light[hole]);
+        if (hole % 3 == 2) {
+            Serial.println();
+        }
+    }
 }
 
 void SendToBoards(uint32_t now) {
@@ -208,4 +286,5 @@ void loop() {
 
     DrawScreens(now);
     SendToBoards(now);
+    PrintLightTest(now);
 }
