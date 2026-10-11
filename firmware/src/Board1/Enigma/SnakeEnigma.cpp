@@ -40,7 +40,7 @@ SnakeEnigma::SnakeEnigma(const Button &leftButton, const Button &rightButton, Sc
     : turnLeftButton(leftButton), turnRightButton(rightButton), screen(snakeScreen), code(bombCode) {
 }
 
-void SnakeEnigma::Start(uint32_t now) {
+void SnakeEnigma::Reset(uint32_t now) {
     columns = screen.width() / SnakeTuning::CELL_SIZE;
     rows = screen.height() / SnakeTuning::CELL_SIZE;
 
@@ -72,7 +72,7 @@ EnigmaEvent SnakeEnigma::Update(uint32_t now) {
     const bool growing = length < targetLength;
     const int cellsThatStay = growing ? length : length - 1;
     if (IsOutside(next) || IsOnSnake(next, cellsThatStay)) {
-        Start(now);
+        Reset(now);
         return EnigmaEvent::Mistake;
     }
 

@@ -5,11 +5,11 @@ SnakeCablesEnigma::SnakeCablesEnigma(SnakeEnigma &snakePart, CableEnigma &cables
     : snake(snakePart), cables(cablesPart), code(bombCode) {
 }
 
-void SnakeCablesEnigma::Start(uint32_t now) {
+void SnakeCablesEnigma::Reset(uint32_t now) {
     do {
         code.Shuffle();
     } while (cables.IsSolved());
-    snake.Start(now);
+    snake.Reset(now);
     snakeDone = false;
 }
 
@@ -21,7 +21,7 @@ EnigmaEvent SnakeCablesEnigma::Update(uint32_t now) {
     const EnigmaEvent event = snake.Update(now);
     if (event == EnigmaEvent::Solved) {
         Serial.println("Snake done: plug the cables");
-        cables.Start(now);
+        cables.Reset(now);
         snakeDone = true;
         return EnigmaEvent::None;
     }

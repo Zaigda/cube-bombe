@@ -19,7 +19,7 @@ InvadersEnigma::InvadersEnigma(const Button &leftButton, const Button &rightButt
     : moveLeftButton(leftButton), moveRightButton(rightButton), guide(guideScreen), singer(singerScreen) {
 }
 
-void InvadersEnigma::Start(uint32_t now) {
+void InvadersEnigma::Reset(uint32_t now) {
     shipX = (guide.width() - InvadersTuning::SHIP_WIDTH) / 2;
     lastShipMoveMs = now;
     lastFireMs = now;

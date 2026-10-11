@@ -1,6 +1,6 @@
 #include <Arduino.h>
 #include <iterator>
-#include "Config.h"
+#include "Board1/Config.h"
 #include "Board1/Core/BombCode.h"
 #include "Board1/Core/BombDisplay.h"
 #include "Board1/Core/Countdown.h"
@@ -9,27 +9,26 @@
 #include "Board1/Enigma/CableEnigma.h"
 #include "Board1/Enigma/EnigmaStation.h"
 #include "Board1/Enigma/InvadersEnigma.h"
+#include "Board1/Enigma/LightEnigma.h"
 #include "Board1/Enigma/SnakeCablesEnigma.h"
 #include "Board1/Enigma/SnakeEnigma.h"
-#include "Board1/Enigma/LightEnigma.h"
 #include "Board1/Outputs/PanelOutput.h"
 #include "Board1/Outputs/Screen.h"
+#include "Common/Config.h"
 #include "Common/Inputs/CablePanel.h"
 #include "Common/Inputs/InputManager.h"
 #include "Common/Inputs/PinButton.h"
 #include "Common/Inputs/RemoteButton.h"
-#include "Common/Outputs/StatusLed.h"
 #include "Common/Messages/Enigma2Message.h"
 #include "Common/Messages/Enigma3Message.h"
 #include "Common/Messages/MessageLink.h"
-#include "Common/Config.h"
+#include "Common/Outputs/StatusLed.h"
 
-constexpr uint16_t ALL_GRID_LEDS = 0b111111111;
-constexpr uint32_t PANEL_ERROR_PRINT_MS = 1000;
+constexpr uint16_t ALL_GRID_LEDS = (1 << LightTuning::HOLE_COUNT) - 1;
 
 PinButton leftButton(Pins::SNAKE_LEFT_BUTTON);
 PinButton rightButton(Pins::SNAKE_RIGHT_BUTTON);
-PinButton snakeStartButton(Pins::SNAKE_RESET_BUTTON, GameTuning::RESET_FEEDBACK_AFTER_MS);
+PinButton snakeStartButton(Pins::SNAKE_START_BUTTON, GameTuning::RESET_FEEDBACK_AFTER_MS);
 RemoteButton invadersStartButton;
 RemoteButton shipLeftButton;
 RemoteButton shipRightButton;
@@ -50,9 +49,9 @@ CableEnigma cableEnigma(cables, snakeScreen, code);
 SnakeCablesEnigma snakeCables(snake, cableEnigma, code);
 InvadersEnigma invaders(shipLeftButton, shipRightButton, guideScreen, singerScreen);
 
-MessageReader<Enigma3InputMessage> boardCReader;
-Enigma3InputMessage boardC = {};
-LightEnigma light(boardC);
+MessageReader<Enigma3InputMessage> board3Reader;
+Enigma3InputMessage board3 = {};
+LightEnigma light(board3);
 
 Countdown countdown;
 EnigmaStation snakeStation("Snake", snakeCables, snakeStartButton, countdown);
@@ -61,81 +60,30 @@ EnigmaStation lightStation("Light", light, lightStartButton, countdown);
 GameManager game(countdown, snakeStartButton);
 BombDisplay bombDisplay(game, snakeScreen);
 
-MessageReader<Enigma2InputMessage> boardBReader;
-Enigma2InputMessage boardB = {};
+MessageReader<Enigma2InputMessage> board2Reader;
+Enigma2InputMessage board2 = {};
 uint32_t lastSendMs = 0;
 
-void ReceiveFromBoardB(uint32_t now) {
-    boardBReader.Receive(Serial2, boardB, now);
-    invadersStartButton.SetDown(boardB.resetBtn);
-    shipLeftButton.SetDown(boardB.leftBtn);
-    shipRightButton.SetDown(boardB.rightBtn);
+void ReceiveFromBoard2(uint32_t now) {
+    board2Reader.Receive(Serial2, board2, now);
+    invadersStartButton.SetDown(board2.startButton);
+    shipLeftButton.SetDown(board2.leftHeard);
+    shipRightButton.SetDown(board2.rightHeard);
 }
 
-uint16_t idleReference[LightTuning::HOLE_COUNT] = {};
-uint32_t lastIdleStepMs = 0;
-
-bool IsAnyHoleCovered(uint32_t now) {
-    if (!boardCReader.IsLinked(now)) {
-        return false;
+void ReceiveFromBoard3(uint32_t now) {
+    Enigma3InputMessage received = board3;
+    board3Reader.Receive(Serial1, received, now);
+    if (LightEnigma::IsValidMessage(received)) {
+        board3 = received;
     }
-    const bool step = now - lastIdleStepMs >= LightTuning::IDLE_STEP_MS;
-    if (step) {
-        lastIdleStepMs = now;
-    }
-
-    bool covered = false;
-    for (int hole = 0; hole < LightTuning::HOLE_COUNT; hole++) {
-        const uint16_t value = boardC.light[hole];
-        if (value > idleReference[hole]) {
-            idleReference[hole] = value;
-        } else if (step) {
-            idleReference[hole] -= (idleReference[hole] - value) / LightTuning::IDLE_FOLLOW;
-        }
-        if (value * 100 < idleReference[hole] * LightTuning::COVERED_PERCENT) {
-            covered = true;
-        }
-    }
-    return covered;
-}
-
-bool IsPossible(const Enigma3InputMessage &message) {
-    uint8_t buttonByte = 0;
-    memcpy(&buttonByte, &message.resetBtn, 1);
-    if (buttonByte > 1) {
-        return false;
-    }
-    for (uint16_t value : message.light) {
-        if (value > LightTuning::MAX_LIGHT) {
-            return false;
-        }
-    }
-    return true;
-}
-
-void ReceiveFromBoardC(uint32_t now) {
-    Enigma3InputMessage received = boardC;
-    boardCReader.Receive(Serial1, received, now);
-    if (IsPossible(received)) {
-        boardC = received;
-    }
-    const bool coveredToStart = !lightStation.IsStarted() && IsAnyHoleCovered(now);
-    lightStartButton.SetDown(boardC.resetBtn || coveredToStart);
-}
-
-uint16_t ToGridLeds(uint16_t sensorMask) {
-    uint16_t ledMask = 0;
-    for (int sensor = 0; sensor < LightTuning::HOLE_COUNT; sensor++) {
-        if ((sensorMask >> sensor) & 1) {
-            ledMask |= 1 << LightTuning::LED_OF_SENSOR[sensor];
-        }
-    }
-    return ledMask;
+    const bool coveredToStart = !lightStation.IsStarted() && board3Reader.IsLinked(now) && light.IsAnyHoleCovered(now);
+    lightStartButton.SetDown(board3.startButton || coveredToStart);
 }
 
 uint16_t GetGridMask(uint32_t now) {
     if (LightTuning::TEST) {
-        return 1 << ((now / LightTuning::TEST_LED_MS) % LightTuning::HOLE_COUNT);
+        return LightEnigma::GetTestMask(now);
     }
     if (game.GetState() == GameState::Defused) {
         const uint32_t step = now / EndTuning::CHASE_STEP_MS;
@@ -153,26 +101,7 @@ uint16_t GetGridMask(uint32_t now) {
     if (!lightStation.IsStarted()) {
         return now % GameTuning::PULSE_MS < GameTuning::PULSE_MS / 2 ? 1 << LightTuning::IDLE_LED : 0;
     }
-    return lightStation.IsPlaying() ? ToGridLeds(light.GetLedMask()) : 0;
-}
-
-uint32_t lastLightTestMs = 0;
-
-void PrintLightTest(uint32_t now) {
-    if (!LightTuning::TEST || now - lastLightTestMs < LightTuning::TEST_PRINT_MS) {
-        return;
-    }
-    lastLightTestMs = now;
-
-    const int led = (now / LightTuning::TEST_LED_MS) % LightTuning::HOLE_COUNT;
-    Serial.printf("Light test: board 3 %s, LED %d should be on. Sensors:\n",
-                  boardCReader.IsLinked(now) ? "linked" : "NOT LINKED", led);
-    for (int hole = 0; hole < LightTuning::HOLE_COUNT; hole++) {
-        Serial.printf("  %d=%4u", hole, boardC.light[hole]);
-        if (hole % 3 == 2) {
-            Serial.println();
-        }
-    }
+    return lightStation.IsPlaying() ? light.GetLedMask() : 0;
 }
 
 void SendToBoards(uint32_t now) {
@@ -181,20 +110,18 @@ void SendToBoards(uint32_t now) {
     }
     lastSendMs = now;
 
-    const Enigma2OutputMessage message = {
-        .ledState = invadersStation.GetLedState()
-    };
-    MessageLink::Send(Serial2, message);
+    const Enigma2OutputMessage invadersMessage = {invadersStation.GetLedState()};
+    MessageLink::Send(Serial2, invadersMessage);
 
     const Enigma3OutputMessage lightMessage = {GetGridMask(now), lightStation.GetLedState()};
     MessageLink::Send(Serial1, lightMessage);
 }
 
 void DrawLinkCheck(uint32_t now) {
-    if (!boardBReader.IsLinked(now)) {
+    if (!board2Reader.IsLinked(now)) {
         snakeScreen.DrawCenteredText(Texts::BOARD_2, Palette::RED, StationTuning::LINK_CHECK_TOP);
     }
-    if (!boardCReader.IsLinked(now)) {
+    if (!board3Reader.IsLinked(now)) {
         snakeScreen.DrawCenteredText(Texts::BOARD_3, Palette::RED,
                                      StationTuning::LINK_CHECK_TOP + StationTuning::LINK_CHECK_LINE);
     }
@@ -218,10 +145,10 @@ void DrawScreens(uint32_t now) {
 
 void ReportPanelError() {
     snakeLed.Set(LedState::FastBlinking);
-    uint32_t lastPrintMs = millis() - PANEL_ERROR_PRINT_MS;
+    uint32_t lastPrintMs = millis() - Panels::ERROR_PRINT_MS;
     while (true) {
         const uint32_t now = millis();
-        if (now - lastPrintMs >= PANEL_ERROR_PRINT_MS) {
+        if (now - lastPrintMs >= Panels::ERROR_PRINT_MS) {
             lastPrintMs = now;
             Serial.printf("Panels failed to start: %s\n", output.GetError());
         }
@@ -276,8 +203,8 @@ void setup() {
 void loop() {
     const uint32_t now = millis();
 
-    ReceiveFromBoardB(now);
-    ReceiveFromBoardC(now);
+    ReceiveFromBoard2(now);
+    ReceiveFromBoard3(now);
 
     inputs.Update(now);
     game.Update(now);
@@ -286,5 +213,5 @@ void loop() {
 
     DrawScreens(now);
     SendToBoards(now);
-    PrintLightTest(now);
+    light.PrintTest(now, board3Reader.IsLinked(now));
 }

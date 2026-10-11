@@ -10,7 +10,7 @@ class SnakeCablesEnigma : public Enigma {
 public:
     SnakeCablesEnigma(SnakeEnigma &snakePart, CableEnigma &cablesPart, BombCode &bombCode);
 
-    void Start(uint32_t now) override;
+    void Reset(uint32_t now) override;
 
     EnigmaEvent Update(uint32_t now) override;
 

@@ -5,7 +5,7 @@
 #include "Common/Messages/Enigma3Message.h"
 
 // Each sensor value is the average of SAMPLES reads.
-namespace LightTuning {
+namespace SensorTuning {
     constexpr int SAMPLES = 4;
 }
 
@@ -14,11 +14,14 @@ namespace GridTuning {
     constexpr uint32_t SWEEP_STEP_MS = 150;
 }
 
-// GPIO numbers of board 3. Grid order: left to right, top to bottom (0 1 2 / 3 4 5 / 6 7 8).
-// Avoid 0 (BOOT button). The checks below refuse USB, flash, PSRAM and COM port pins.
+// GPIO numbers of board 3. GRID_LEDS are in grid order: left to right, top to bottom (0 1 2 / 3 4 5 / 6 7 8), as the
+// plate is seen. LIGHT_SENSORS are not: board 1 finds the hole of each sensor with LightTuning::LED_OF_SENSOR.
+// START_BUTTON is optional: covering a hole also starts the light enigma, but only the button resets it alone during
+// play (the global reset still works). Avoid 0 (BOOT button). The checks below refuse USB, flash, PSRAM and COM port
+// pins.
 namespace Pins {
     constexpr uint8_t LIGHT_SENSORS[LIGHT_SENSOR_COUNT] = {18, 16, 8, 5, 15, 6, 7, 4, 17};
-    constexpr uint8_t GRID_LEDS[LIGHT_SENSOR_COUNT] = {42, 2, 1, 41, 40, 47,  38, 39, 45};
+    constexpr uint8_t GRID_LEDS[LIGHT_SENSOR_COUNT] = {42, 2, 1, 41, 40, 47, 38, 39, 45};
     constexpr uint8_t START_BUTTON = 10;
     constexpr uint8_t STATUS_LED = 9;
     constexpr uint8_t LINK_TX = 21;

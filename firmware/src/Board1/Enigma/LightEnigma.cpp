@@ -1,14 +1,16 @@
 #include "LightEnigma.h"
 #include <Arduino.h>
+#include <cstring>
 
 LightEnigma::LightEnigma(const Enigma3InputMessage &lightSensors)
     : sensors(lightSensors) {
 }
 
-void LightEnigma::Start(uint32_t) {
+void LightEnigma::Reset(uint32_t) {
     pattern = random(LightTuning::PATTERN_COUNT);
-    for (int hole = 0; hole < LightTuning::HOLE_COUNT; hole++) {
-        reference[hole] = 0;
+    for (int sensor = 0; sensor < LightTuning::HOLE_COUNT; sensor++) {
+        reference[sensor] = 0;
+        idleReference[sensor] = sensors.light[sensor];
     }
     patternPrinted = false;
     ledMask = 0;
@@ -24,14 +26,15 @@ EnigmaEvent LightEnigma::Update(uint32_t) {
     int coveredCount = 0;
     bool matches = true;
     ledMask = 0;
-    for (int hole = 0; hole < LightTuning::HOLE_COUNT; hole++) {
-        const bool covered = IsCovered(hole);
-        const bool inPattern = LightTuning::PATTERNS[pattern][LightTuning::LED_OF_SENSOR[hole]];
+    for (int sensor = 0; sensor < LightTuning::HOLE_COUNT; sensor++) {
+        const int led = LightTuning::LED_OF_SENSOR[sensor];
+        const bool covered = IsCovered(sensor);
+        const bool inPattern = LightTuning::PATTERNS[pattern][led];
         if (covered) {
             coveredCount++;
         }
         if (covered && (inPattern || LightTuning::SHOW_ALL_COVERED)) {
-            ledMask |= 1 << hole;
+            ledMask |= 1 << led;
         }
         if (covered != inPattern) {
             matches = false;
@@ -51,16 +54,71 @@ uint16_t LightEnigma::GetLedMask() const {
     return ledMask;
 }
 
-void LightEnigma::UpdateReferences() {
-    for (int hole = 0; hole < LightTuning::HOLE_COUNT; hole++) {
-        if (sensors.light[hole] > reference[hole] && sensors.light[hole] <= LightTuning::MAX_LIGHT) {
-            reference[hole] = sensors.light[hole];
+bool LightEnigma::IsAnyHoleCovered(uint32_t now) {
+    const bool step = now - lastIdleStepMs >= LightTuning::IDLE_STEP_MS;
+    if (step) {
+        lastIdleStepMs = now;
+    }
+
+    bool covered = false;
+    for (int sensor = 0; sensor < LightTuning::HOLE_COUNT; sensor++) {
+        const uint16_t value = sensors.light[sensor];
+        if (value > idleReference[sensor]) {
+            idleReference[sensor] = value;
+        } else if (step) {
+            idleReference[sensor] -= (idleReference[sensor] - value) / LightTuning::IDLE_FOLLOW;
+        }
+        if (value * 100 < idleReference[sensor] * LightTuning::COVERED_PERCENT) {
+            covered = true;
+        }
+    }
+    return covered;
+}
+
+void LightEnigma::PrintTest(uint32_t now, bool linked) {
+    if (!LightTuning::TEST || now - lastTestPrintMs < LightTuning::TEST_PRINT_MS) {
+        return;
+    }
+    lastTestPrintMs = now;
+
+    Serial.printf("Light test: board 3 %s, LED %d should be on. Sensors:\n", linked ? "linked" : "NOT LINKED",
+                  GetTestLed(now));
+    for (int sensor = 0; sensor < LightTuning::HOLE_COUNT; sensor++) {
+        Serial.printf("  %d=%4u", sensor, sensors.light[sensor]);
+        if (sensor % 3 == 2) {
+            Serial.println();
         }
     }
 }
 
-bool LightEnigma::IsCovered(int hole) const {
-    return sensors.light[hole] * 100 < reference[hole] * LightTuning::COVERED_PERCENT;
+uint16_t LightEnigma::GetTestMask(uint32_t now) {
+    return 1 << GetTestLed(now);
+}
+
+bool LightEnigma::IsValidMessage(const Enigma3InputMessage &message) {
+    uint8_t buttonByte = 0;
+    memcpy(&buttonByte, &message.startButton, sizeof(buttonByte));
+    if (buttonByte > 1) {
+        return false;
+    }
+    for (uint16_t value : message.light) {
+        if (value > LightTuning::MAX_LIGHT) {
+            return false;
+        }
+    }
+    return true;
+}
+
+void LightEnigma::UpdateReferences() {
+    for (int sensor = 0; sensor < LightTuning::HOLE_COUNT; sensor++) {
+        if (sensors.light[sensor] > reference[sensor]) {
+            reference[sensor] = sensors.light[sensor];
+        }
+    }
+}
+
+bool LightEnigma::IsCovered(int sensor) const {
+    return sensors.light[sensor] * 100 < reference[sensor] * LightTuning::COVERED_PERCENT;
 }
 
 void LightEnigma::PrintPattern() const {
@@ -72,4 +130,8 @@ void LightEnigma::PrintPattern() const {
         }
         Serial.println();
     }
+}
+
+int LightEnigma::GetTestLed(uint32_t now) {
+    return (now / LightTuning::TEST_LED_MS) % LightTuning::HOLE_COUNT;
 }

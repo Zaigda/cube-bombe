@@ -5,9 +5,10 @@
 #include "Common/Inputs/Button.h"
 #include "Common/Outputs/LedState.h"
 
-// One enigma with its Start/Reset button, LED state and texts (DEPART + timer, RATE, DESAMORCE); frozen at the end.
-// In the last seconds, while the enigma is not in play (DEPART or DESAMORCE), IsInFinalAlarm() is true and its
-// screens blink a red border.
+// One enigma with its Start/Reset button, LED state and texts: "EXPLOSION" with the timer and "x/3" while it waits
+// for its Start, "RATE" after a mistake, "PHASE DESAMORCEE x/3" once solved (x = enigmas solved); frozen at the end.
+// In the last seconds, while the enigma is not in play (waiting or solved), IsInFinalAlarm() is true and its screens
+// blink a red border.
 class EnigmaStation {
 public:
     EnigmaStation(const char *stationName, Enigma &stationEnigma, const Button &startButton,
@@ -35,8 +36,6 @@ public:
 
     static bool IsFinalAlarmLit(uint32_t now);
 
-    static void DrawProgress(Screen &screen, uint16_t color, int16_t top);
-
 private:
     enum class Phase : uint8_t { Paused, Playing, Failed, Solved };
 
@@ -48,9 +47,11 @@ private:
 
     void DrawTimer(Screen &screen, uint32_t now) const;
 
-    void DrawFinalAlarm(Screen &screen, uint32_t now) const;
-
     void DrawSolved(Screen &screen, uint16_t color) const;
+
+    static void DrawProgress(Screen &screen, uint16_t color, int16_t top);
+
+    void DrawFinalAlarm(Screen &screen, uint32_t now) const;
 
     static uint8_t stationTotal;
     static uint8_t solvedTotal;

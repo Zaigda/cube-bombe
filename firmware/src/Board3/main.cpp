@@ -1,5 +1,5 @@
 #include <Arduino.h>
-#include "Config.h"
+#include "Board3/Config.h"
 #include "Common/Config.h"
 #include "Common/Messages/Enigma3Message.h"
 #include "Common/Messages/MessageLink.h"
@@ -7,21 +7,21 @@
 
 StatusLed statusLed(Pins::STATUS_LED);
 
-MessageReader<Enigma3OutputMessage> boardAReader;
-Enigma3OutputMessage boardA = {};
+MessageReader<Enigma3OutputMessage> board1Reader;
+Enigma3OutputMessage board1 = {};
 uint32_t lastSendMs = 0;
 
 uint16_t ReadLight(uint8_t pin) {
     uint32_t sum = 0;
-    for (int i = 0; i < LightTuning::SAMPLES; i++) {
+    for (int i = 0; i < SensorTuning::SAMPLES; i++) {
         sum += analogRead(pin);
     }
-    return sum / LightTuning::SAMPLES;
+    return sum / SensorTuning::SAMPLES;
 }
 
 void SendSensors() {
     Enigma3InputMessage message = {};
-    message.resetBtn = digitalRead(Pins::START_BUTTON) == LOW;
+    message.startButton = digitalRead(Pins::START_BUTTON) == LOW;
     for (uint8_t i = 0; i < LIGHT_SENSOR_COUNT; i++) {
         message.light[i] = ReadLight(Pins::LIGHT_SENSORS[i]);
     }
@@ -30,9 +30,9 @@ void SendSensors() {
 
 void ShowLeds(uint32_t now) {
     for (uint8_t i = 0; i < LIGHT_SENSOR_COUNT; i++) {
-        digitalWrite(Pins::GRID_LEDS[i], (boardA.ledMask >> i) & 1 ? HIGH : LOW);
+        digitalWrite(Pins::GRID_LEDS[i], (board1.ledMask >> i) & 1 ? HIGH : LOW);
     }
-    statusLed.Set(boardA.ledState);
+    statusLed.Set(board1.ledState);
     statusLed.Update(now);
 }
 
@@ -62,7 +62,7 @@ void setup() {
 void loop() {
     const uint32_t now = millis();
 
-    boardAReader.Receive(Serial2, boardA, now);
+    board1Reader.Receive(Serial2, board1, now);
     ShowLeds(now);
 
     if (now - lastSendMs >= LinkTuning::SEND_MS) {

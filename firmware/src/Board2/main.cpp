@@ -1,69 +1,66 @@
 #include <Arduino.h>
-#include "Config.h"
 #include "Microphone.h"
-#include "Common/Messages/MessageLink.h"
-#include "Common/Messages/Enigma2Message.h"
+#include "Board2/Config.h"
 #include "Common/Config.h"
+#include "Common/Messages/Enigma2Message.h"
+#include "Common/Messages/MessageLink.h"
 #include "Common/Outputs/StatusLed.h"
 
-StatusLed gameStateLed(Pins::OUTPUT_GAME_STATE_LED);
+StatusLed statusLed(Pins::STATUS_LED);
 
-Microphone leftMicrophone(Pins::INPUT_LEFT_MICRO_ANALOG);
-Microphone rightMicrophone(Pins::INPUT_RIGHT_MICRO_ANALOG);
+Microphone leftMicrophone(Pins::LEFT_MICROPHONE);
+Microphone rightMicrophone(Pins::RIGHT_MICROPHONE);
 
-MessageReader<Enigma2OutputMessage> boardAReader;
-Enigma2OutputMessage boardA = {};
+MessageReader<Enigma2OutputMessage> board1Reader;
+Enigma2OutputMessage board1 = {};
 uint32_t lastSendMs = 0;
 
-void ReceiveFromBoardA(uint32_t now) {
-    boardAReader.Receive(Serial2, boardA, now);
-    gameStateLed.Set(boardA.ledState);
+void ReceiveFromBoard1(uint32_t now) {
+    board1Reader.Receive(Serial2, board1, now);
+    statusLed.Set(board1.ledState);
 }
 
-void SendToBoardA(uint32_t now) {
+// When both microphones hear a sound, only the louder one is sent (an exact tie goes to the left).
+void SendToBoard1(uint32_t now) {
     if (now - lastSendMs < LinkTuning::SEND_MS) {
         return;
     }
     lastSendMs = now;
 
-    Enigma2InputMessage inputMessage = {
-        .resetBtn = digitalRead(Pins::INPUT_RESET_BUTTON) == LOW,
-        .leftBtn = leftMicrophone.Detected(),
-        .rightBtn = rightMicrophone.Detected()
-    };
+    Enigma2InputMessage message = {};
+    message.startButton = digitalRead(Pins::START_BUTTON) == LOW;
+    message.leftHeard = leftMicrophone.IsDetected();
+    message.rightHeard = rightMicrophone.IsDetected();
 
-    if (inputMessage.leftBtn && inputMessage.rightBtn) {
-        // Choose the louder microphone; an exact tie goes to the left.
-        inputMessage.leftBtn = leftMicrophone.Level() >= rightMicrophone.Level();
-        inputMessage.rightBtn = !inputMessage.leftBtn;
+    if (message.leftHeard && message.rightHeard) {
+        message.leftHeard = leftMicrophone.GetLevel() >= rightMicrophone.GetLevel();
+        message.rightHeard = !message.leftHeard;
     }
 
-    MessageLink::Send(Serial2, inputMessage);
+    MessageLink::Send(Serial2, message);
 }
 
-void setup()
-{
+void setup() {
     Serial.begin(115200);
 
     Serial2.begin(LinkTuning::BAUD, SERIAL_8N1, Pins::LINK_RX, Pins::LINK_TX);
 
-    Serial.println("ESP32 - Board B - Initialized.");
+    Serial.println("Bomb cube - board 2 (microphones)");
 
-    pinMode(Pins::INPUT_RESET_BUTTON, INPUT_PULLUP);
-    gameStateLed.Begin();
+    pinMode(Pins::START_BUTTON, INPUT_PULLUP);
+    statusLed.Begin();
     leftMicrophone.Begin();
     rightMicrophone.Begin();
 }
 
-void loop()
-{
+void loop() {
     const uint32_t now = millis();
 
-    ReceiveFromBoardA(now);
+    ReceiveFromBoard1(now);
 
-    gameStateLed.Update(now);
+    statusLed.Update(now);
     leftMicrophone.Update();
     rightMicrophone.Update();
 
-    SendToBoardA(now);
+    SendToBoard1(now);
 }

@@ -23,7 +23,7 @@ class SnakeEnigma : public Enigma {
 public:
     SnakeEnigma(const Button &leftButton, const Button &rightButton, Screen &snakeScreen, const BombCode &bombCode);
 
-    void Start(uint32_t now) override;
+    void Reset(uint32_t now) override;
 
     EnigmaEvent Update(uint32_t now) override;
 

@@ -50,7 +50,7 @@ void EnigmaStation::Reset(uint32_t now) {
     if (phase == Phase::Solved) {
         solvedTotal--;
     }
-    enigma.Start(now);
+    enigma.Reset(now);
     ledState = LedState::Off;
     phase = Phase::Paused;
     frozen = false;
@@ -123,7 +123,7 @@ void EnigmaStation::DrawTexts(Screen &screen, uint32_t now) const {
     switch (phase) {
         case Phase::Paused: {
             const uint16_t color = start.IsDown() ? Palette::GREEN : GetPulseColor(now);
-            screen.DrawCenteredText(Texts::START, color, StationTuning::WAITING_TEXT_TOP);
+            screen.DrawCenteredText(Texts::WAITING, color, StationTuning::WAITING_TEXT_TOP);
             DrawTimer(screen, now);
             DrawProgress(screen, Palette::GREEN, StationTuning::PROGRESS_TEXT_TOP);
             break;

@@ -6,7 +6,7 @@ CableEnigma::CableEnigma(const CablePanel &cablePanel, Screen &cableScreen, cons
     : cables(cablePanel), screen(cableScreen), code(bombCode) {
 }
 
-void CableEnigma::Start(uint32_t) {
+void CableEnigma::Reset(uint32_t) {
 }
 
 EnigmaEvent CableEnigma::Update(uint32_t) {

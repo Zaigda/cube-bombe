@@ -10,12 +10,13 @@ struct Bullet {
     bool active;
 };
 
-// Enigma 2: the singer moves the ship by voice, only the guide sees the aliens. A landed alien is a mistake.
+// Enigma 2: the singer moves the ship with any loud sound (blowing works) on the left or right microphone; only the
+// guide sees the aliens. A landed alien is a mistake.
 class InvadersEnigma : public Enigma {
 public:
     InvadersEnigma(const Button &leftButton, const Button &rightButton, Screen &guideScreen, Screen &singerScreen);
 
-    void Start(uint32_t now) override;
+    void Reset(uint32_t now) override;
 
     EnigmaEvent Update(uint32_t now) override;
 

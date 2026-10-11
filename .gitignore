@@ -2,15 +2,12 @@
 .pio/
 firmware/.pio/
 
-# IDE 
+# IDE
 .idea/
 cmake-build-*/
 *.iml
 **/.vscode/*
 !**/.vscode/extensions.json
-
-# Godot 
-.godot/
 
 # OS
 .DS_Store

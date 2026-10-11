@@ -96,9 +96,9 @@ bool BombDisplay::DrawScrollingVictory(Screen &screen, uint32_t scrollMs) const 
 
 void BombDisplay::DrawVictoryTime(Screen &screen, uint32_t remainingMs) const {
     for (int16_t band = 0; band < screen.height(); band += Panels::PANEL_HEIGHT) {
-        screen.DrawCenteredText(Texts::VICTORY, Palette::GREEN, band + StationTuning::START_TEXT_TOP);
+        screen.DrawCenteredText(Texts::VICTORY, Palette::GREEN, band + EndTuning::VICTORY_TEXT_TOP);
         screen.setTextSize(StationTuning::TIMER_TEXT_SIZE);
-        screen.DrawCenteredTime(remainingMs, EndTuning::VICTORY_TIME_COLOR, band + StationTuning::TIMER_TEXT_TOP);
+        screen.DrawCenteredTime(remainingMs, EndTuning::VICTORY_TIME_COLOR, band + EndTuning::VICTORY_TIME_TOP);
         screen.setTextSize(1);
     }
 }
@@ -143,13 +143,14 @@ void BombDisplay::DrawBlinkingBoom(Screen &screen, uint32_t textMs) const {
 void BombDisplay::DrawResetHold(uint32_t holdMs) {
     const bool done = holdMs >= GameTuning::GLOBAL_RESET_HOLD_MS;
     const int middle = resetScreen.height() / 2;
-    const int barTop = middle + 2;
+    const int textTop = middle - EndTuning::RESET_TEXT_ABOVE;
+    const int barTop = middle + EndTuning::RESET_BAR_BELOW;
     const int barWidth = resetScreen.width() - 2 * EndTuning::RESET_BAR_MARGIN;
     const uint32_t shownMs = std::min(holdMs, GameTuning::GLOBAL_RESET_HOLD_MS);
     const int filledWidth = static_cast<int>(barWidth * shownMs / GameTuning::GLOBAL_RESET_HOLD_MS);
 
     resetScreen.fillScreen(Palette::BLACK);
-    resetScreen.DrawCenteredText(done ? Texts::RESET_DONE : Texts::RESET, Palette::WHITE, middle - 10);
+    resetScreen.DrawCenteredText(done ? Texts::RESET_DONE : Texts::RESET, Palette::WHITE, textTop);
     resetScreen.drawRect(EndTuning::RESET_BAR_MARGIN, barTop, barWidth, EndTuning::RESET_BAR_HEIGHT, Palette::WHITE);
     resetScreen.fillRect(EndTuning::RESET_BAR_MARGIN, barTop, filledWidth, EndTuning::RESET_BAR_HEIGHT,
                          done ? Palette::GREEN : Palette::ORANGE);

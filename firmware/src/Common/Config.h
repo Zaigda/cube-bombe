@@ -2,7 +2,9 @@
 #include <cstddef>
 #include <cstdint>
 
-// The serial wires between board 1 and boards 2 and 3.
+// The serial wires between board 1 and boards 2 and 3: each side sends a message every SEND_MS at BAUD. A board
+// silent for TIMEOUT_MS counts as unplugged: nothing pressed, LEDs off, and before the first Start, "CARTE 2" or
+// "CARTE 3" on board 1.
 namespace LinkTuning {
     constexpr uint32_t BAUD = 115200;
     constexpr uint32_t SEND_MS = 50;
